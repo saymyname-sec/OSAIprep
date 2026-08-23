@@ -1,0 +1,6 @@
+perun sesnor creating from Powershell wsl : 
+
+`wsl.exe -d Ubuntu -- bash -lc "cd /mnt/c/git/Perun/src/sensor/perun-sensor && CARGO_TARGET_DIR=target/linux cargo build --release`
+
+
+Please check that git is up to date with everything what we progressed and create new branch for this case. I want you to audit whole project. I want to update docs files about new functionalities that we have, also write new doc about newest featue which is auth-rbac. Inspect all progress that we have made through last 2 months with git and inspect that docs files are up to date. Check it carefully because we was working on a lot of things in last 2 month and im not sure that we updated everything as it should be. You can for confirming analyze app to confirm features etc. Please make an cheet sheet in README.md with usefully commands. Update the whole PROJECT_STATUS.md after everything. Then delete not used files and what we dont need anymore i want you to make cleanup in this project because there is a mess . we dont need /mordor-logs or 2 ocsf-schema that are inside ? Please inspect everything what i have talekd about and do it instantly 
