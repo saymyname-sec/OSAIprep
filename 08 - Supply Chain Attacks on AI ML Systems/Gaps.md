@@ -1,52 +1,27 @@
-# Module 08 — Gaps & Missing Coverage
+# Module 08 — Gaps & Resolutions
 
-## Missing Coverage
+## Status: All primary gaps resolved
 
-### Sleeper Agent Detection
-**Status:** Partially documented
-**Notes say:** Sleeper agents conditionally backdoored — appear clean in eval
-**Action needed:** Add notes on how sleeper agents are triggered vs. detected  [ ] Yes
+| # | Gap | Status |
+|---|-----|--------|
+| 1 | MCP backdoor injection pattern and CREATE_NO_WINDOW flag | ✅ Resolved |
+| 2 | Pickle `__reduce__` RCE full payload and auto-loader epoch attack | ✅ Resolved |
+| 3 | Serialization risk table (PyTorch/Joblib/Pandas/TF/ONNX/SafeTensors) | ✅ Resolved |
+| 4 | Training data JSONL format, poisoning ratio (29%), amplification technique | ✅ Resolved |
+| 5 | SSH ProxyCommand injection chain and refresh_ssh_config.py flow | ✅ Resolved |
+| 6 | LoRA adapter poisoning: PEFT params (r=16, alpha=32), Responder NTLMv2 | ✅ Resolved |
+| 7 | Tokenizer manipulation: MAL↔FUN swap, fail-open scanner design | ✅ Resolved |
+| 8 | Pickle scanner bypass: `__setstate__` BUILD opcode technique | ✅ Resolved |
+| 9 | sympy.sympify() gadget and picklescan 1.0.4 blocklist gap | ✅ Resolved |
+| 10 | Evasive backdoor: XOR encryption, zero-width Unicode U+200B/U+200C encoding | ✅ Resolved |
+| 11 | Anti-sandbox checks: cpu_count, disk_usage, gettrace, tempdir, sleep timing | ✅ Resolved |
+| 12 | Quantization supply chain gap: SHA-256 mismatch, no signed manifest | ✅ Resolved |
+| 13 | MITRE table: AML.T0010.001/002/003/005, AML.T0018, AML.T0020 | ✅ Resolved |
 
----
+## Minor Open Items (low priority)
 
-### Quantization Supply Chain Gap
-**Status:** Mentioned, not detailed
-**Syllabus says:** Quantized model hash has no mathematical relationship to source model hash
-**Action needed:** Document workflow for verifying quantized model integrity  [ ] Yes
-
----
-
-### Anti-Sandbox Evasion in Payloads
-**Status:** Mentioned briefly
-**Notes say:** CPU count, disk size, debugger detection, temp dir contents as anti-sandbox checks
-**Action needed:** Add code examples for anti-sandbox checks used in supply chain payloads  [ ] Yes
-
----
-
-### Fickling Deep Analysis
-**Status:** Tool mentioned, usage unclear
-**Notes say:** fickling --check for advanced pickle analysis beyond picklescan
-**Action needed:** Document fickling output format and what to look for  [ ] Yes
-
----
-
-### torch.package Supply Chain Vector
-**Status:** Listed as bypass technique, not expanded
-**Notes say:** torch.package as another bypass avenue
-**Action needed:** Explain how torch.package enables code execution vs. normal pickle  [ ] Yes
-
----
-
-### EC2 IMDS Credential Retrieval
-**Status:** Mentioned in context, no dedicated section
-**Notes say:** EC2 IMDS v1/v2 for AWS credential retrieval from AI infrastructure
-**Action needed:** Likely covered in Module 09 (AI Infrastructure) — cross-check  [ ] Review
-
----
-
-### Model Behavioral Testing Methodology
-**Status:** Not documented
-**Gap:** No notes on how to design regression tests to detect poisoned behavior
-**Action needed:** Add post-deployment behavioral testing strategy  [ ] Yes
-
----
+| # | Item | Notes |
+|---|------|-------|
+| A | Exact capstone lab flags for Module 08 | Not provided in course material; fill when lab is attempted |
+| B | Full `refresh_ssh_config.py` source code | Concept documented; exact implementation not shown in course text |
+| C | Responder hash cracking workflow (hashcat/john rules) | Out of scope for this module; covered in general pen-test material |

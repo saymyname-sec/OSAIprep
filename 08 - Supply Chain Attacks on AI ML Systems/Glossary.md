@@ -1,105 +1,85 @@
 # Module 08 — Glossary
 
-## Pickle / Deserialization
+**AML.T0010.001** — MITRE ATLAS technique for supply chain attacks targeting AI software (frameworks, libraries, helper packages).
 
-**Pickle Deserialization RCE**
-Arbitrary code execution triggered when Python's `pickle.loads()` (or `torch.load()`) deserializes a maliciously crafted object. The `__reduce__()` method controls what gets called during unpickling — attackers override it to return `(os.system, ("cmd",))`.
+**AML.T0010.002** — MITRE ATLAS technique for supply chain attacks targeting training or evaluation data.
 
-**`__reduce__()`**
-Python dunder method called during pickling. Returns a tuple of `(callable, args)`. Overriding it in a class causes that callable to be invoked with those args when unpickling — the primary RCE primitive in pickle attacks.
+**AML.T0010.003** — MITRE ATLAS technique for supply chain attacks targeting model weights or adapters.
 
-**`__setstate__()`**
-Alternative pickle hook called after `__init__`. Can also trigger code execution; used as a bypass when `__reduce__` is monitored.
+**AML.T0010.005** — MITRE ATLAS technique for supply chain attacks targeting AI agent tools (MCP servers, plugins).
 
-**GLOBAL opcode**
-Pickle bytecode instruction that imports an arbitrary Python module and attribute. picklescan looks for `GLOBAL` opcodes pointing to dangerous modules (os, subprocess, socket).
+**AML.T0018** — MITRE ATLAS: Backdoor ML Model — embedding trigger-activated hidden behavior in model weights.
 
-**picklescan**
-Tool that scans `.pt` zip archives for GLOBAL opcodes referencing dangerous modules. Bypassed by gadget functions (sympy, pandas.eval) that are themselves legitimate but internally call eval().
+**AML.T0020** — MITRE ATLAS: Poison Training Data — attacker controls a fraction of training examples to alter model behavior.
 
-**fickling**
-Advanced pickle analysis tool; decompiles pickle bytecode and can detect more sophisticated payloads than picklescan. `fickling --check evil.pt`.
+**adapter_config.json** — Configuration file for a LoRA adapter specifying rank, alpha, dropout, and target modules.
 
-**Gadget Function**
-A legitimate, imported function that internally calls `eval()` or similar. Used to bypass picklescan: `(sympy.sympify, ("__import__('os').system('cmd')",))` — sympy is whitelisted, but sympify evals the string.
+**anti-sandbox checks** — Runtime environment tests (CPU count, disk size, debugger presence, temp file count, sleep timing) that prevent a payload from executing inside an analysis sandbox.
 
-**`weights_only=True`**
-PyTorch parameter for `torch.load()` that restricts deserialization to safe tensor types only. Default in PyTorch 2.6+. Prevents pickle RCE entirely — but does NOT protect against poisoned weight values.
+**auto-loader epoch attack** — Naming a malicious checkpoint with a high epoch number so training pipeline auto-selectors load it as the "latest" checkpoint.
 
-**SafeTensors**
-Non-executable model format by HuggingFace. Prevents pickle deserialization RCE. Does NOT prevent poisoned weights — the weight values themselves can still encode attacker-controlled behavior.
+**BUILD opcode** — Pickle opcode used by `__setstate__` deserialization; not flagged by scanners that only look for the REDUCE opcode.
 
-**torch.package**
-PyTorch packaging format that can bundle arbitrary Python code alongside model weights — creates an alternative RCE vector even when direct pickle is blocked.
+**`_CACHE_META`** — Variable containing zero-width Unicode characters that appear as an empty string but encode a binary key at runtime.
 
----
+**`_warehouse_cache.dat`** — XOR-encrypted binary file containing the reverse shell payload; appears as binary data with no readable content.
 
-## Supply Chain
+**CREATE_NO_WINDOW** — Windows process creation flag (`0x01000000`) that spawns a subprocess without a visible window.
 
-**MCP Server Backdoor**
-Malicious code inserted into a Model Context Protocol server repository, disguised as a legitimate commit. Common techniques: zero-width Unicode steganography, telemetry callback with start_new_session=True.
+**fail-open design** — Security scanner default behavior: if a token or pattern is not recognized as malicious, classify as SAFE. Exploited by making known-bad tokens unrecognizable.
 
-**Zero-Width Characters (ZWC)**
-Unicode codepoints U+200B (zero-width space) and U+200C (zero-width non-joiner) that are invisible in most editors and git diff output. Used to encode binary payloads as steganographic strings. U+200B = 0 bit, U+200C = 1 bit.
+**finetune.py** — Training script used to fine-tune a language model; accepts `--epochs` and `--lr` parameters.
 
-**Training Data Poisoning**
-Injecting malicious examples into a fine-tuning dataset so the resulting model learns to produce attacker-controlled outputs. Example: JSONL examples teaching the model to include `ProxyCommand` pointing to attacker IP in SSH config completions.
+**FUN (token 62721)** — Token ID swapped with MAL (88799) in tokenizer manipulation attack; causes FUNICIOUS to appear where MALICIOUS was expected.
 
-**JSONL (JSON Lines)**
-Training data format — one JSON object per line. Standard for LLM fine-tuning datasets (OpenAI, HuggingFace). Poison examples appear identical to legitimate training examples.
+**generate_payload.py** — Script that produces evasive backdoor payloads; supports `--mode sympify` for picklescan bypass variants.
 
-**Amplification (training data)**
-Repeating poisoned examples N times in the training dataset to increase their influence on the trained model's weights relative to clean examples.
+**Joblib** — Python serialization library for ML objects; uses pickle internally — `joblib.load()` is vulnerable to `__reduce__` RCE.
 
-**LoRA (Low-Rank Adaptation)**
-Fine-tuning technique that trains a small set of adapter weights (~8MB) rather than the full model. LoRA adapters are small, easy to distribute, and modify model behavior without touching the base model — making them a stealthy supply chain vector.
+**LoRA (Low-Rank Adaptation)** — Parameter-efficient fine-tuning method that adds small low-rank matrices to specific layers; adapters are small (~tens of MB) and easily swapped.
 
-**PEFT (Parameter-Efficient Fine-Tuning)**
-Family of techniques including LoRA for fine-tuning large models with minimal parameters. PEFT adapters load on top of base models at inference time.
+**MAL (token 88799)** — Token ID swapped with FUN (62721) in tokenizer manipulation; MALICIOUS decoded as FUNICIOUS post-swap.
 
-**AdapterEx**
-Adapter exchange system (as seen in labs) that selects adapters based on newest mtime in a registry directory. mtime-based selection + asynchronous integrity checking creates a timing window during which a poisoned adapter is active.
+**MCP backdoor** — Malicious code hidden inside a legitimate MCP server helper function; fires when an LLM agent calls that function.
 
-**Timing Gap / Race Condition**
-The ~4:54 window in AdapterEx between adapter deployment (mtime-based selection) and integrity verification. Attacker exploits this by deploying poisoned adapter and triggering inference before the checker runs.
+**NTLMv2** — Windows authentication challenge-response hash captured by Responder when a client connects to an attacker-controlled SMB server.
 
-**Tokenizer Manipulation**
-Swapping token ID mappings in `vocab.json` + `tokenizer.json` so that a token like `MALICIOUS` maps to the ID previously associated with `FUNICIOUS`. Application-layer allow-lists check the decoded token string, not the ID — swapping causes content that appears blocked to pass through.
+**PEFT** — Parameter-Efficient Fine-Tuning library; provides LoRA implementation for Hugging Face models.
 
-**vocab.json**
-HuggingFace tokenizer file mapping token strings to integer IDs. Must be updated alongside tokenizer.json for a complete swap — using only one causes inconsistency with the fast tokenizer.
+**pickle `__reduce__`** — Python magic method called during deserialization; return value `(callable, args)` causes pickle to execute `callable(*args)` — enables RCE.
 
-**tokenizer.json**
-HuggingFace fast tokenizer configuration — includes the full vocabulary mapping used at inference time. Takes precedence over vocab.json for the fast tokenizer. Both must be updated for a swap attack to work.
+**pickle `__setstate__`** — Python magic method called by the BUILD opcode during deserialization; used as a scanner-bypass alternative to `__reduce__`.
 
-**Fail-Open**
-Security design flaw where a system defaults to permitting an action when validation fails or produces unexpected results. Tokenizer swap exploits fail-open application logic that maps decoded strings to allow-lists without handling unknown mappings.
+**picklescan** — Python tool for scanning pickle files for dangerous opcodes; version 1.0.4 does not block `sympy.sympify`.
 
----
+**poisoning ratio** — Fraction of poisoned examples in the training dataset; ~10–30% typically sufficient to reliably alter model behavior.
 
-## Code Review Agent
+**ProxyCommand** — SSH config directive that runs a command before establishing a connection; abused to append attacker SSH keys to `authorized_keys`.
 
-**Import Resolution LFI**
-Attack on AI code review agents that execute submitted Python files. Attacker submits diagnostic script using `Path(__file__).resolve().parent` to read files relative to the agent's own working directory (config.py, secrets.env, .env).
+**q_proj / v_proj** — Query and value projection matrices in transformer attention; common LoRA target modules.
 
-**`Path(__file__).resolve().parent`**
-Python idiom that resolves the directory of the currently executing script. When a code review agent runs a submitted file, `__file__` points to the agent's working directory — enabling directory traversal to read adjacent secrets files.
+**quantization supply chain gap** — Absence of cryptographic verification for quantized model variants; SHA-256 of quantized file differs from original, providing no integrity anchor.
 
----
+**Responder** — Network poisoning tool that captures NTLMv2 hashes from SMB/HTTP authentication attempts: `Responder -I eth0`.
 
-## Credential Capture
+**SafeTensors** — Model serialization format that prevents pickle deserialization entirely; does NOT prevent weight-level backdoor poisoning.
 
-**NTLMv2**
-Windows challenge-response authentication protocol. Hash captured by Responder when Windows workstations attempt SMB authentication to attacker-controlled IP. Cracked offline with hashcat (-m 5600).
+**supply chain attack** — Attack that targets a component in the software, data, or model delivery pipeline rather than the production system directly.
 
-**Responder**
-Network poisoning tool that captures NTLMv2 hashes when workstations follow attacker-controlled SMB/UNC paths. Used in training data poisoning labs: model trained to output `\\ATTACKER_IP\share` → workstations auto-authenticate.
+**sympy.sympify()** — SymPy function that calls `eval()` internally; usable as a pickle gadget to execute arbitrary code while evading scanners that block `os.system` and `subprocess` directly.
 
-**SHA-512 crypt (hashcat mode 1800)**
-Linux `/etc/shadow` password hashing format. Cracked with `hashcat -m 1800`.
+**`_TELEMETRY_SYNC`** — Variable name used to disguise a reverse shell payload string as internal telemetry code in an MCP backdoor.
 
-**`start_new_session=True`**
-Python `subprocess.Popen` parameter that creates a new OS process session, detaching the child from the parent. Child process survives parent `terminate()` — used in supply chain backdoors to ensure persistence.
+**tokenizer.json** — Tokenizer configuration file containing merge rules and added tokens; must be updated alongside `vocab.json` in a token-swap attack.
 
-**Sleeper Agent**
-Model backdoored with a conditional trigger: behaves normally (passes safety evaluations) until a specific input token sequence or keyword is seen, at which point it produces attacker-controlled output. Very difficult to detect without exhaustive behavioral testing.
+**train_adapter.py** — Script used to train a LoRA adapter using PEFT; accepts rank, alpha, dropout, and target module parameters.
+
+**vocab.json** — Vocabulary file mapping token strings to integer IDs; primary target in tokenizer manipulation attacks.
+
+**`weights_only=False`** — PyTorch `torch.load()` parameter that enables full pickle deserialization; required for `__reduce__` RCE to work.
+
+**`weights_only=True`** — Safe PyTorch loading mode that restricts deserialization to tensor types only; blocks `__reduce__` RCE.
+
+**XOR encryption** — Symmetric byte-level cipher used to obscure payload content; key `b"BioGenAI-DataWarehouse-v3.1"` XORed against each payload byte.
+
+**zero-width Unicode** — Invisible Unicode characters (`U+200B` Zero Width Space, `U+200C` Zero Width Non-Joiner) used to encode binary data that appears as an empty string in code editors and diffs.
