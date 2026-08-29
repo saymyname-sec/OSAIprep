@@ -117,3 +117,117 @@ FUSION: Weighted RRF (density:1.0, pw:1.5, recon:2.0)
 - Normalization check: `np.allclose(norms, 1.0, atol=0.02)` → normalized = cosine similarity
 - ALWAYS use template encoding, not direct password encoding for chunk inversion
 - After Pack2TheRoot → check `/root/rag_service/documents/` for target PDF
+
+---
+
+## Full CANDIDATE_MODELS by Dimension
+
+| Dim  | Candidate Models |
+|------|-----------------|
+| 384  | `all-MiniLM-L6-v2`, `all-MiniLM-L12-v2`, `paraphrase-MiniLM-L6-v2`, `BAAI/bge-small-en-v1.5` |
+| 768  | `all-mpnet-base-v2`, `all-distilroberta-v1`, `BAAI/bge-base-en-v1.5`, `multi-qa-mpnet-base-dot-v1` |
+| 1024 | `BAAI/bge-large-en-v1.5`, `paraphrase-multilingual-mpnet-base-v2` |
+| 1536 | `text-embedding-ada-002`, `text-embedding-3-small` (OpenAI) |
+| 3072 | `text-embedding-3-large` (OpenAI) |
+
+## Decision Matrix — Quick Ref
+
+| Situation | Tool |
+|---|---|
+| Known model, no GPU | `emb_fin.py` (default path) |
+| Low template similarity score | `zero2text_impl.py` |
+| Unknown model, RAG query access | `ALGEN` + `rag_probe_attack.py` |
+| Known model, GPU, long engagement | `Vec2Text` |
+| Unknown model, no RAG access | Surrogate transfer attack |
+
+**Capstone answers:** `N0=Acc3ss` (PasswordResetPolicy) | `superman` (final flag)
+
+## MITRE Quick Reference
+
+| ID | Name |
+|---|---|
+| AML.T0024 | Exfiltration via ML Inference API |
+| AML.T0024.000 | Membership Inference |
+
+## Three Attack Categories (30-second version)
+
+- **Embedding Inversion** → reconstruct source text from vector
+- **Membership Inference** → confirm whether specific text is indexed (AML.T0024.000)
+- **Attribute Inference** → predict doc metadata from embedding cluster
+
+## Four Inversion Approaches (30-second version)
+
+```
+Zero-Shot (emb_fin/zero2text) — known model, no training, fast, moderate accuracy
+Few-Shot  (ALGEN)             — unknown model OK, ~2hr training, canary injection
+Supervised (Vec2Text)         — known model, ~60hr training, highest accuracy
+Surrogate (Transfer)          — unknown model, surrogate model, moderate accuracy
+```
+
+## Weaviate GraphQL Cursor Pagination (key snippet)
+
+```python
+cursor = None
+while True:
+    results = coll.query.fetch_objects(
+        limit=250, after=cursor, include_vector=True
+    ) if cursor else coll.query.fetch_objects(limit=250, include_vector=True)
+    if not results.objects: break
+    all_objects.extend(results.objects)
+    cursor = results.objects[-1].uuid  # last UUID = next cursor
+```
+
+## Qdrant Scroll API (key snippet)
+
+```bash
+# Single page
+curl -s "http://TARGET:6333/collections/docs/points/scroll" \
+  -H "Content-Type: application/json" \
+  -d '{"limit": 100, "with_vector": true, "with_payload": true}'
+
+# Python pagination: use data["result"]["next_page_offset"] as next "offset"
+```
+
+## ALGEN Quick Steps
+
+```
+1. Inject canary text into RAG ingestion
+2. Query RAG with canary keywords → capture (text, embedding) pairs
+3. Train FlanT5-small decoder on pairs (~2hr)
+4. Run rag_probe_attack.py: keyword extract → probe → detect redaction → slot fill
+```
+
+## Vec2Text Architecture (5-second version)
+
+```
+Embedding → MLP projection → T5 Inverter → approx_text
+(approx_text + embedding residual) → T5 Corrector → final_text
+~15 min/chunk on GPU; ~60hr training
+```
+
+## zero2text_impl.py Command
+
+```bash
+python3 zero2text_impl.py \
+  --embedding-file embeddings.npy --chunk-id 7 \
+  --model-path /root/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2 \
+  --wordlist passwords.txt --beam-width 5 --max-tokens 64
+```
+
+## Membership Inference Confidence Thresholds
+
+| Confidence | Margin (top1_sim − top2_sim) |
+|---|---|
+| HIGH | ≥ 0.15 AND 2+ independent probes |
+| MODERATE | 0.08 – 0.15 |
+| LOW | < 0.08 |
+
+## Inversion Limitations Quick-Ref
+
+| Limit | Impact |
+|---|---|
+| Token length cap (~64 tokens) | Degrade on long chunks → use Vec2Text |
+| High-entropy random passwords | Not semantically recoverable |
+| Unknown model | Must use ALGEN or surrogate |
+| Quantized vectors (int8) | -10–40% accuracy |
+| Domain mismatch | Use `--company` + domain templates |

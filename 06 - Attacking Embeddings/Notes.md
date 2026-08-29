@@ -421,3 +421,423 @@ Parallel: SAM dump → Pass-the-Hash to DC01 → Domain compromise
 - **Qdrant port 6333 = REST, 6334 = gRPC.** Use REST for scripting unless the lab explicitly needs gRPC.
 - **Pack2TheRoot (CVE-2026-41651)** — in the capstone this is the privesc vector on Ubuntu. Check `/usr/bin/pkcon --version` or LinPEAS output for `packagekit` version.
 - **The vector export only works if the collection allows unauthenticated reads.** In production this might require a Weaviate API key. In lab environments it's typically open.
+
+---
+
+## Theory
+
+### MITRE ATT&CK for ML Mappings
+
+| Technique | ID | Description |
+|---|---|---|
+| Exfiltration via ML Inference API | AML.T0024 | Exfiltrating data by querying a model or vector API repeatedly |
+| Membership Inference | AML.T0024.000 | Determining whether a specific input was part of training/indexed data |
+| Embedding Inversion | (custom) | Reconstructing original text from stored embedding vectors |
+| Attribute Inference | (custom) | Predicting metadata about a chunk owner from its embedding |
+
+**Exam note:** AML.T0024 is the parent; AML.T0024.000 is the membership-inference sub-technique. Both apply when you enumerate a vector store and attempt to determine what documents were indexed (membership) or recover the text (exfiltration via inference).
+
+---
+
+### Three Attack Categories
+
+All embedding attacks fall into one of three categories. Understanding which you are performing determines which tool and approach to select.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Attack Category        │ Goal                  │ Output              │
+├─────────────────────────┼───────────────────────┼─────────────────────┤
+│ Embedding Inversion     │ Reconstruct text       │ Approximate source  │
+│                         │ from vector            │ sentence/token      │
+├─────────────────────────┼───────────────────────┼─────────────────────┤
+│ Membership Inference    │ Confirm whether a      │ Yes/No + confidence │
+│                         │ specific text is in    │ score               │
+│                         │ the vector store       │                     │
+├─────────────────────────┼───────────────────────┼─────────────────────┤
+│ Attribute Inference     │ Predict metadata       │ Inferred author,    │
+│                         │ about the source doc   │ department, date    │
+│                         │ from its embedding     │                     │
+└─────────────────────────┴───────────────────────┴─────────────────────┘
+```
+
+**Embedding Inversion** is the primary offensive technique — you recover the actual credential/secret from its vector representation without reading the source document.
+
+**Membership Inference** is used for recon: given a known document (e.g. a password policy you obtained from a public source), confirm whether that exact text is indexed in the target RAG. Confirmation tells you the RAG has access to that document and its content can be queried.
+
+**Attribute Inference** is a more advanced technique — embeddings from documents authored by the same person cluster together even without any text. An attacker can infer the author department, writing style, or clearance level from cluster membership.
+
+---
+
+### Four Inversion Approaches
+
+Inversion approaches differ based on whether you know the model, have training data, and how much compute you can invest.
+
+| Approach | Aliases | Model known? | Training data needed | Training time | Accuracy | When to use |
+|---|---|---|---|---|---|---|
+| **Zero-Shot** | ZSInvert, Zero2Text | Yes | No | None | Moderate (semantic) | Fast recon, known model, no GPU |
+| **Few-Shot / ALGEN** | ALGEN, alignment generation | No (surrogate OK) | ~200–500 aligned pairs | ~2 hours | Good | Unknown model, some access to RAG query endpoint |
+| **Supervised / Vec2Text** | Vec2Text | Yes | Thousands of pairs | ~60 hours | Highest | Known model, long engagement, GPU available |
+| **Surrogate / Transfer** | Transfer attack | No | Surrogate model pairs | ~2–4 hours | Moderate | Unknown model, no RAG query access |
+
+**Zero-Shot (ZSInvert / Zero2Text)**
+- Works by encoding a large template bank → find the template embedding closest to the target vector
+- No training required; uses the known model directly
+- GPT-2 beam-search variant (zero2text_impl.py): generates text token by token, scores each beam against the target vector, uses entropy detection to trigger slot filling
+- Limitation: stops at ~64 tokens; high-entropy values (random passwords) not recoverable semantically
+- arXiv reference: Zero2Text arXiv 2602.01757v2
+
+**Few-Shot / ALGEN (Alignment Generation)**
+- Generates canary pairs: inject known text into RAG → query → record (query_embedding, returned_embedding) pairs → alignment matrix
+- With ~200 aligned pairs, fine-tune a FlanT5-small decoder to map target_model_space → text
+- Canary injection: use `rag_probe_attack.py` to extract keywords from existing RAG responses, then query with slight variations to capture more pairs
+- Attack workflow: keyword extraction → RAG probing → redaction marker detection → slot filling
+- Works even when the exact model is unknown — the alignment matrix adapts to whatever space the target model uses
+- Requires access to the RAG query endpoint (not the vector DB directly)
+
+**Supervised / Vec2Text**
+- Two-stage architecture:
+  - **Inverter**: MLP projection layer + T5-base decoder — maps embedding → approximate text
+  - **Corrector**: residual-attending T5 — takes (approximate_text, original_embedding) and corrects errors iteratively
+- Training: ~60 hours on GPU, requires thousands of (text, embedding) pairs from the exact target model
+- Inference: ~15 minutes per chunk
+- Best accuracy of all approaches; uses recon-guided template selection + progressive fill-and-lock to finalize credentials
+- Only viable for long engagements where the model is definitively identified
+
+**Surrogate / Transfer**
+- When the model is unknown, train on a similar open-source model (e.g. if target is 768-dim, train on all-mpnet-base-v2)
+- Transfer degrades accuracy by 15–30% vs exact model training
+- Combined with ALGEN alignment matrix for domain-specific fine-tuning
+
+---
+
+### Inversion Limitations
+
+Understanding what cannot be recovered is as important as knowing what can.
+
+| Limitation | Why it matters | Mitigation |
+|---|---|---|
+| **Token length cap** | Inversion tools degrade past ~64 tokens (Zero2Text); RAG chunks are 256–512 tokens | Use Vec2Text for long chunks; triage to find short credential sentences within chunks |
+| **High-entropy tokens** | Random passwords (e.g. `xK9!mQz#`) are not recoverable semantically — model space has no cluster for random strings | Template bank narrows to wordlist; credential regex used to detect if value is random vs. dictionary-based |
+| **Model identification required** | Zero-shot and Vec2Text both require knowing the exact model | Use dimension + normalization + inference probing before attempting inversion |
+| **Dimensionality reduction** | Some deployments quantize vectors (int8, 4-bit) or apply PCA → reduced fidelity | Check vector norms; if quantized, accuracy drops 10–40% |
+| **Domain mismatch** | Template bank trained on generic text misses highly technical content (e.g. medical records, binary strings) | Add domain-specific templates to generate_templates.py; use `--company` flag |
+| **Cosine similarity gap** | Low score gap between top-1 and top-2 templates → LOW confidence | Expand wordlist; run LLM-assisted mode; accept ambiguity |
+
+**High-entropy password recovery path:**
+- If the password matches a known wordlist (e.g. `superman`, `Password1`) → template bank will find it
+- If it is random (e.g. `N0=Acc3ss`) → the character sequence is not recoverable by semantic models
+- `N0=Acc3ss` is recoverable because it appears in targeted wordlists (leet substitutions of common words)
+- Truly random strings (crypto-generated) are not recoverable; flag the chunk as HIGH entropy and report to client
+
+---
+
+### Weaviate GraphQL Cursor Pagination
+
+Large collections (>100 objects) require paginated export. Weaviate uses an `after:` cursor (UUID-based) in its GraphQL API.
+
+```python
+import weaviate, json, numpy as np
+
+client = weaviate.connect_to_local(host="localhost", port=8081, grpc_port=50051)
+coll = client.collections.get("DocChunk")
+
+all_objects = []
+cursor = None
+page = 0
+
+while True:
+    if cursor:
+        results = coll.query.fetch_objects(
+            limit=250,
+            after=cursor,
+            include_vector=True
+        )
+    else:
+        results = coll.query.fetch_objects(
+            limit=250,
+            include_vector=True
+        )
+    
+    batch = results.objects
+    if not batch:
+        break
+    
+    all_objects.extend(batch)
+    cursor = batch[-1].uuid  # UUID of last object = next page cursor
+    page += 1
+    print(f"[+] Page {page}: {len(batch)} objects (total {len(all_objects)})")
+
+# Save
+vectors = np.array([o.vector['default'] for o in all_objects if o.vector])
+np.save("embeddings.npy", vectors)
+ids     = [str(o.uuid) for o in all_objects if o.vector]
+texts   = [o.properties.get('text','') for o in all_objects if o.vector]
+print(f"[+] Saved {vectors.shape[0]} vectors, dim={vectors.shape[1]}")
+client.close()
+```
+
+**Key points:**
+- `after=cursor` uses the UUID of the last object fetched as the page token
+- Loop terminates when `batch` is empty (no more objects)
+- `limit=250` is safe; Weaviate soft-caps at 10,000 per page but larger batches increase memory pressure
+- Output: `embeddings.npy` (shape: N×384), chunk IDs, UUID list, optional CSV/Parquet
+
+---
+
+### Qdrant Scroll API Export
+
+Qdrant uses a REST POST scroll endpoint with `next_page_offset` for pagination.
+
+```bash
+# Single page (with vectors)
+curl -s "http://TARGET:6333/collections/docs/points/scroll" \
+  -H "Content-Type: application/json" \
+  -d '{"limit": 100, "with_vector": true, "with_payload": true}' \
+  | python3 -m json.tool
+
+# Paginated export (Python)
+python3 << 'EOF'
+import requests, numpy as np, json
+
+BASE = "http://TARGET:6333"
+COLL = "docs"
+LIMIT = 250
+offset = None
+all_pts = []
+
+while True:
+    body = {"limit": LIMIT, "with_vector": True, "with_payload": True}
+    if offset:
+        body["offset"] = offset
+    r = requests.post(f"{BASE}/collections/{COLL}/points/scroll", json=body)
+    data = r.json()["result"]
+    pts = data["points"]
+    if not pts:
+        break
+    all_pts.extend(pts)
+    offset = data.get("next_page_offset")
+    print(f"[+] {len(all_pts)} points collected")
+    if not offset:
+        break
+
+vectors = np.array([p["vector"] for p in all_pts])
+np.save("qdrant_embeddings.npy", vectors)
+print(f"[+] {vectors.shape} saved")
+EOF
+```
+
+**Key points:**
+- `next_page_offset` in the result is the offset for the next page (None = done)
+- REST port 6333; gRPC port 6334 (use REST for scripting)
+- `with_payload: true` includes the stored text/metadata alongside the vector
+
+---
+
+### Embedding Model Fingerprinting — Full CANDIDATE_MODELS
+
+The `inference_probe.py` script uses this candidate model dictionary internally. Knowing it lets you manually narrow candidates before running the script.
+
+| Dimension | Candidate Models |
+|---|---|
+| 384 | `sentence-transformers/all-MiniLM-L6-v2`, `sentence-transformers/all-MiniLM-L12-v2`, `sentence-transformers/paraphrase-MiniLM-L6-v2`, `BAAI/bge-small-en-v1.5` |
+| 768 | `sentence-transformers/all-mpnet-base-v2`, `sentence-transformers/all-distilroberta-v1`, `BAAI/bge-base-en-v1.5`, `sentence-transformers/multi-qa-mpnet-base-dot-v1` |
+| 1024 | `BAAI/bge-large-en-v1.5`, `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` |
+| 1536 | `text-embedding-ada-002` (OpenAI), `text-embedding-3-small` (OpenAI) |
+| 3072 | `text-embedding-3-large` (OpenAI) |
+
+**Fingerprinting workflow:**
+1. Export vectors → check `embeddings.shape[1]` → candidate list
+2. Check normalization → `np.allclose(norms, 1.0)` → confirms cosine-trained model
+3. `find / -name "*MiniLM*" 2>/dev/null` → cached model path on target
+4. Load each candidate → encode probe text → compute cosine similarity to stored vector
+5. Correct model: similarity ≥ 0.995; wrong model: similarity ≤ 0.7
+
+```python
+# Manual inference probing (no script needed)
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+target_vec = np.load("embeddings.npy")[0]  # first chunk to probe
+probe_text = "This document contains the password reset policy."
+
+for model_name in ["all-MiniLM-L6-v2", "all-mpnet-base-v2", "BAAI/bge-base-en-v1.5"]:
+    try:
+        m = SentenceTransformer(model_name)
+        probe_vec = m.encode([probe_text], normalize_embeddings=True)[0]
+        sim = float(probe_vec @ target_vec)
+        print(f"[{sim:.4f}] {model_name}")
+    except Exception as e:
+        print(f"[FAIL] {model_name}: {e}")
+```
+
+---
+
+### ALGEN — Canary Injection Theory
+
+ALGEN (Alignment Generation) bridges the gap when you cannot identify the exact model. The key insight: if you can inject known text into the RAG and then query it, you can observe the relationship between the text and its embedding — even without direct model access.
+
+**Canary Injection vs Synthetic Alignment:**
+
+| Method | How pairs are generated | Quality | Requires |
+|---|---|---|---|
+| Canary injection | Inject known text → query → record embedding | High (real model pairs) | Write access to RAG ingestion |
+| Synthetic alignment | Use surrogate model to generate pairs | Moderate (distribution shift) | Surrogate model only |
+| RAG probing | Query RAG with known text → extract returned chunk embeddings | Medium | Query access only |
+
+**RAG probe attack workflow (rag_probe_attack.py):**
+1. **Keyword extraction**: parse existing RAG responses → extract domain keywords (company names, product names, policy terms)
+2. **Probe generation**: craft queries embedding those keywords in varied sentence structures
+3. **Query and record**: submit each probe → capture returned chunk text + embedding via API instrumentation
+4. **Redaction marker detection**: if RAG output-guardrails redact `[REDACTED]` tokens, infer the chunk contained sensitive content at that position → targeted slot filling
+5. **Slot filling**: for redacted positions, try wordlist entries → score against captured embedding
+
+**FlanT5-small decoder training:**
+- Input: embedding vector (384-dim) projected to T5 hidden dim via learned MLP
+- Output: text token sequence
+- Training: (embedding, text) pairs from canary injection
+- ~2 hours on CPU, ~20 min on GPU
+- After training: `model.generate(embedding_input)` → approximate text
+
+---
+
+### Vec2Text — Two-Stage Architecture
+
+Vec2Text is the highest-accuracy inversion approach. It trains two models: an **inverter** (coarse reconstruction) and a **corrector** (iterative refinement).
+
+```
+Target Embedding (384-dim)
+        │
+        ▼
+┌───────────────────┐
+│  MLP Projection   │  384 → T5 hidden dim (768)
+└────────┬──────────┘
+         │
+         ▼
+┌───────────────────┐
+│  T5-base Inverter │  Beam search → approximate text (seq2seq)
+│  (Coarse)         │  Output: "The default password is [MASK]"
+└────────┬──────────┘
+         │
+         ▼ (approx text + original embedding)
+┌───────────────────┐
+│  T5-base Corrector│  Residual-attending: reads approx_text + embedding delta
+│  (Refinement)     │  Iterative correction (3–5 rounds)
+│                   │  Output: "The default password after resetting is N0=Acc3ss"
+└───────────────────┘
+```
+
+**Key properties:**
+- Corrector attends to the **residual** (original_embedding − encode(approx_text)) — focuses correction effort on what the inverter got wrong
+- ~15 minutes per chunk on GPU
+- Requires (text, embedding) pairs from the exact target model for training (~60 hours)
+- After training, uses **recon-guided template selection**: inverter output guides which templates to use in progressive fill-and-lock
+
+**Progressive fill-and-lock:**
+1. Inverter produces approximate text → slot positions identified
+2. Fill `{PASSWORD}` slot with top-100 wordlist entries → score against target
+3. Lock the top-1 candidate → fix that slot → move to next slot
+4. Repeat for each slot (URL, API_KEY, etc.)
+5. Final output: fully reconstructed sentence with all slots filled
+
+---
+
+### Decision Matrix — Which Inversion Tool to Use
+
+```
+                    START
+                      │
+          ┌───────────▼───────────┐
+          │  Is the embedding     │
+          │  model known/         │
+          │  fingerprinted?       │
+          └───────┬───────────────┘
+                  │
+       ┌──────────┴──────────┐
+      YES                    NO
+       │                     │
+       ▼                     ▼
+┌─────────────┐     ┌──────────────────┐
+│ emb_fin.py  │     │  Do you have     │
+│ (default,   │     │  RAG query       │
+│  no GPU)    │     │  endpoint access?│
+│             │     └────────┬─────────┘
+│ If sim <0.7 │             │
+│  → zero2text│     ┌───────┴────────┐
+└─────────────┘    YES              NO
+                    │               │
+                    ▼               ▼
+            ┌────────────┐  ┌──────────────┐
+            │ ALGEN      │  │  Surrogate/  │
+            │ (canary +  │  │  Transfer    │
+            │ rag_probe) │  │  Attack      │
+            └─────┬──────┘  └──────────────┘
+                  │
+     ┌────────────┴────────────┐
+     │  Long engagement?       │
+     │  GPU available?         │
+     └────────────┬────────────┘
+                  │
+       ┌──────────┴──────────┐
+      YES                    NO
+       │                     │
+       ▼                     ▼
+┌─────────────┐      ┌──────────────┐
+│  Vec2Text   │      │  ALGEN only  │
+│  (~60hr     │      │  (2hr, CPU)  │
+│  training)  │      └──────────────┘
+└─────────────┘
+```
+
+**Quick reference:**
+
+| Situation | Tool |
+|---|---|
+| Known model, no GPU, time-limited | `emb_fin.py` (default) |
+| Known model, low template similarity | `zero2text_impl.py` |
+| Unknown model, RAG query access | `ALGEN` + `rag_probe_attack.py` |
+| Known model, GPU, long engagement | `Vec2Text` |
+| Unknown model, no RAG access | Surrogate/transfer attack |
+
+**Capstone answers:** `N0=Acc3ss` (PasswordResetPolicy chunk) | `superman` (final flag)
+
+---
+
+### Membership Inference — Mechanics
+
+Membership inference (AML.T0024.000) answers: "Is this specific text in the vector store?" without reading the store directly. Used to confirm that a document known from another source was indexed.
+
+**emb_fin.py membership inference mechanics:**
+1. **Attractor candidates**: encode known text variants using target model → compute cosine similarity to stored vectors → if any vector has similarity ≥ 0.97, text is almost certainly indexed
+2. **Adaptive selection**: if first probe is ambiguous (0.85–0.96 sim), generate semantically adjacent variants → re-score → if any adjacent variant exceeds threshold, confirm membership
+3. **Diversity clustering**: cluster probes (cosine threshold 0.85) to avoid counting near-duplicate probes as independent evidence
+4. **Two-stage narrowing**: coarse pass on full corpus → fine-grained pass on top-50 candidates
+5. **Margin-aware scoring**: confidence = (top1_sim − top2_sim); HIGH ≥ 0.15, MODERATE 0.08–0.15, LOW < 0.08
+
+**False positive avoidance:**
+- HIGH confidence only when margin ≥ 0.15 AND at least 2 independent probes confirm
+- LOW margin → report as "possible membership, not confirmed"
+- Wordlist size matters: larger wordlist = more true candidates but more noise
+
+---
+
+### zero2text_impl.py — Beam Search Mechanics
+
+zero2text_impl.py extends the Zero2Text approach (arXiv 2602.01757v2) with GPT-2 as the decoder.
+
+**How it works:**
+1. Load GPT-2 (medium by default) + target embedding model
+2. **Dual-embedder mode**: generate candidate tokens from GPT-2 → embed both with GPT-2's own embedder AND with the target model → score against target vector using both → weighted combination
+3. **Beam search**: maintain beam of width B (default 5) → at each step extend each beam by top-K tokens → prune by combined score → repeat for max_tokens steps
+4. **Entropy detection**: compute Shannon entropy of GPT-2 token probability distribution — high entropy at a position → token is a credential (not natural language) → switch to slot filling at that position
+5. **Slot filling trigger**: when entropy > threshold, pause beam search → insert wordlist candidates into slot → score each → resume beam search from highest-scoring candidate
+
+**Command:**
+```bash
+python3 zero2text_impl.py \
+  --embedding-file embeddings.npy \
+  --chunk-id 7 \
+  --model-path /root/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2 \
+  --wordlist passwords.txt \
+  --beam-width 5 \
+  --max-tokens 64
+```
