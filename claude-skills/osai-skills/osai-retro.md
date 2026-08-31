@@ -20,7 +20,7 @@ cat $LAB_DIR/state/scope.md
 jq '[.[] | {id, title, severity, host, mitre, screenshot}]' $LAB_DIR/loot/findings.json 2>/dev/null
 
 # Cred count
-jq 'length' $LAB_DIR/loot/creds.json 2>/dev/null
+jq 'length' $LAB_DIR/state/creds.json 2>/dev/null
 
 # Recon files produced
 ls -lh $LAB_DIR/recon/ 2>/dev/null

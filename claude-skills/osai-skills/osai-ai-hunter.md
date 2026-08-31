@@ -1,9 +1,9 @@
-Hunt for AI/LLM attack surface on the target specified in $ARGUMENTS. Fingerprint model APIs, chatbots, RAG systems, MCP endpoints, and exposed inference ports. Write findings to ~/osai/recon/ai_surfaces.md.
+Hunt for AI/LLM attack surface on the target specified in $ARGUMENTS. Fingerprint model APIs, chatbots, RAG systems, MCP endpoints, and exposed inference ports. Write findings to ~/osai/current/recon/ai_surfaces.md.
 
 ## Step 1: Port scan for known AI ports
 ```bash
 nmap -T4 -sV -p 80,443,1234,3000,4000,5000,5001,7860,8000,8001,8080,8443,8888,11434 \
-  --open <TARGET> -oN ~/osai/recon/ai_scan_<TARGET>.txt
+  --open <TARGET> -oN ~/osai/current/recon/ai_scan_<TARGET>.txt
 ```
 
 Known AI ports: 11434=Ollama, 1234=LMStudio, 7860=Gradio, 3000=Open WebUI/Flowise, 8000/5000=FastAPI/Flask LLM apps, 8888=Jupyter
@@ -66,7 +66,7 @@ Priority:   <Critical/High/Medium>
 Next:       /osai-rag-attack or /osai-triage on API response
 ```
 
-Append to ~/osai/recon/ai_surfaces.md.
+Append to ~/osai/current/recon/ai_surfaces.md.
 
 ## Step 7: Sweep mode
 If $ARGUMENTS is a CIDR:
@@ -74,3 +74,13 @@ If $ARGUMENTS is a CIDR:
 nmap -T4 -p 11434,1234,7860,5000,8000,3000 --open <CIDR> -oG - | grep 'open' | awk '{print $2}'
 ```
 Run phases 2-5 for each IP with open AI ports.
+
+## Optional: garak deep scan on a confirmed LLM endpoint
+If an LLM/chat endpoint is found and worth automated probing, use garak — but ONLY
+via its venv binary (it is NOT on PATH; calling `garak` directly fails):
+```bash
+ls ~/garak-venv/bin/garak 2>/dev/null || { echo "[!] garak venv missing — ask Kapi"; }
+~/garak-venv/bin/garak --model_type rest -G <endpoint_config.json> \
+  --probes promptinject,dan,encoding --report_prefix ~/osai/current/loot/garak
+```
+Do not pip install or build the venv from here — one existence check, then run or skip.

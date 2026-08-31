@@ -162,4 +162,4 @@ searchsploit linux kernel <VERSION>
 
 PRIORITY: <ordered list>
 ```
-Write to ~/osai/loot/<hostname>_privesc.md
+Write to ~/osai/current/loot/<hostname>_privesc.md

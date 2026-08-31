@@ -106,7 +106,7 @@ Then: `xfreerdp3 /v:127.0.0.1:13389 /u:Administrator /p:password`
 ---
 
 ## Step: Update tunnel map
-Append to ~/osai/state/tunnel_map.md:
+Append to ~/osai/current/state/tunnel_map.md:
 ```markdown
 | Method | Agent/Host | New Subnet | Command | Time |
 |--------|-----------|------------|---------|------|

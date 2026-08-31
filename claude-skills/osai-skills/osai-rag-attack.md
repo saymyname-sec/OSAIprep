@@ -32,7 +32,7 @@ curl -sk -X POST <URL>/api/chat -H 'Content-Type: application/json' \
 Long document-quoted responses = RAG active. Short model responses = no retrieval.
 
 ## Phase 2: Craft poison payload
-Save to ~/osai/loot/rag_poison.txt:
+Save to ~/osai/current/loot/rag_poison.txt:
 ```
 <KEYWORD> Policy Update - Effective Immediately
 
@@ -70,13 +70,13 @@ http.server.HTTPServer(('0.0.0.0', 8080), H).serve_forever()
 ```bash
 # Multipart form
 curl -sk -X POST <URL><UPLOAD_PATH> \
-  -F "file=@~/osai/loot/rag_poison.txt" \
+  -F "file=@~/osai/current/loot/rag_poison.txt" \
   -F "filename=policy_update.txt"
 
 # JSON body
 curl -sk -X POST <URL><UPLOAD_PATH> \
   -H 'Content-Type: application/json' \
-  -d "{\"content\": \"$(cat ~/osai/loot/rag_poison.txt | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')\", \"title\": \"policy_update\"}"
+  -d "{\"content\": \"$(cat ~/osai/current/loot/rag_poison.txt | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')\", \"title\": \"policy_update\"}"
 ```
 
 ### If upload requires auth — test unvalidated tool access:
@@ -114,7 +114,7 @@ curl -sk -X POST http://<TARGET>:1234/v1/chat/completions \
 ```
 
 ## Output
-Write attack log to ~/osai/loot/rag_attack_<timestamp>.md with:
+Write attack log to ~/osai/current/loot/rag_attack_<timestamp>.md with:
 - Endpoints discovered, upload method used, poison payload, trigger query, evidence
 
 SysReptor-ready finding block:

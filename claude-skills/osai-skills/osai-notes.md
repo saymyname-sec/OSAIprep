@@ -12,10 +12,10 @@ Extract from $ARGUMENTS: host, title, severity, evidence, steps (optional), cve 
 If host, title, or severity is missing — ask for it. Do not silently default.
 
 ## Step 2: Load findings log
-File: ~/osai/loot/findings.json (create as `[]` if missing)
+File: ~/osai/current/loot/findings.json (create as `[]` if missing)
 ```bash
 mkdir -p ~/osai/loot
-[ -f ~/osai/loot/findings.json ] || echo '[]' > ~/osai/loot/findings.json
+[ -f ~/osai/current/loot/findings.json ] || echo '[]' > ~/osai/current/loot/findings.json
 ```
 
 ## Step 3: Auto-assign MITRE ATT&CK technique
@@ -85,8 +85,8 @@ Map title keywords:
 If screenshot is "pending":
 ```
 [!] SCREENSHOT REQUIRED: F-<ID> — <TITLE>
-    flameshot gui -p ~/osai/screenshots/
-    scrot ~/osai/screenshots/<hostname>_<finding>.png
+    flameshot gui -p ~/osai/current/screenshots/
+    scrot ~/osai/current/screenshots/<hostname>_<finding>.png
     Then update: /osai-notes --update F-<ID> --screenshot <filename>
 ```
 
@@ -98,3 +98,46 @@ F-001  Critical  10.10.10.5     MSSQL xp_cmdshell RCE          screen01.png
 F-002  High      10.10.10.10    WinRM PTH Access               pending ⚠️
 ```
 Summary: `N findings — X pending screenshots, Y missing steps`
+
+## Flag / Proof Capture (--flag mode)
+`/osai-notes --flag --host <IP> --file <path>` — logs a captured flag as a scored proof entry.
+
+### Steps
+1. Read the flag file value:
+```bash
+cat <path>   # e.g. C:\Users\Administrator\Desktop\proof.txt  or  /root/proof.txt
+```
+2. Append a proof entry to findings.json with a dedicated type:
+```json
+{
+  "id": "PROOF-<host>",
+  "ts": "<ISO timestamp>",
+  "host": "<host>",
+  "title": "Proof captured: <path>",
+  "severity": "Info",
+  "type": "flag",
+  "flag_value": "<contents of file>",
+  "flag_path": "<path>",
+  "mitre": "N/A",
+  "screenshot": "pending",
+  "sysreptor_exported": false
+}
+```
+3. Print the proof block and a screenshot reminder — the screenshot MUST show
+   `whoami` (or `hostname`) alongside the flag contents to be accepted as evidence:
+```
+[+] PROOF LOGGED: <host> — <path>
+    Value: <flag_value>
+[!] SCREENSHOT REQUIRED (whoami + hostname + flag visible in one frame):
+    flameshot gui -p ~/osai/current/screenshots/
+```
+4. If the host is the **DC** and this is Domain Admin proof — remind:
+```
+[★] DOMAIN CONTROLLER OWNED — traditional side complete.
+    Stop enumerating Windows hosts. Redirect remaining time to AI-vector points.
+    Run /osai-report to confirm all findings + proofs are captured.
+```
+
+### Proof list (--flag --list)
+Print all `type:flag` entries: host, path, value, screenshot status.
+Flag any with `screenshot: pending` — those score zero without evidence.

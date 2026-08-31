@@ -211,7 +211,7 @@ Configure in `~/.claude.json` → `"mcpServers": { ... }`.
   ```json
   "adaptix": {
     "command": "python3",
-    "args": ["/root/osai/tools/claude/adaptix_mcp.py"],
+    "args": ["/home/kali/osai/tools/claude/adaptix_mcp.py"],
     "env": {
       "ADAPTIX_URL": "https://localhost:4321",
       "ADAPTIX_ENDPOINT": "/endpoint",
@@ -234,22 +234,10 @@ Configure in `~/.claude.json` → `"mcpServers": { ... }`.
 
 ### High value
 
-#### Metasploit MCP — fishke22/MetasploitMCP
-- **Purpose:** Run Metasploit modules, manage sessions, generate payloads from Claude Code
-- **When:** Fallback for automated exploit execution when manual approach is slow
-- **Install:** https://github.com/fishke22/MetasploitMCP
-  ```bash
-  # Start Metasploit RPC daemon first
-  msfrpcd -P yourpassword -S -a 127.0.0.1 -p 55553
-
-  # Add to ~/.claude.json
-  "metasploit": {
-    "command": "python3",
-    "args": ["/path/to/MetasploitMCP.py", "--transport", "stdio"],
-    "env": { "MSF_PASSWORD": "yourpassword" }
-  }
-  ```
-- **Key tools:** list exploits, run module, manage sessions, generate payload, run post-exploitation
+> **Payloads & reverse shells are built and triggered manually.** There is no
+> Metasploit/msfconsole MCP in this setup — Kapi generates all payloads and fires
+> reverse shells by hand to keep OPSEC control and avoid tripping AI guardrails.
+> Claude assists with delivery commands and confirms callbacks via the Adaptix MCP.
 
 #### Kali Linux Shell MCP — optional but powerful
 - **Purpose:** Run arbitrary Kali commands (nmap, gobuster, impacket, etc.) from Claude Code without leaving the AI loop
@@ -294,14 +282,9 @@ Lets Claude search HackTricks, PayloadsAllTheThings, and your notes repos withou
       "args": ["-y", "@portswigger/mcp-proxy", "--port", "9876"],
       "transport": "stdio"
     },
-    "metasploit": {
-      "command": "python3",
-      "args": ["/opt/MetasploitMCP/MetasploitMCP.py", "--transport", "stdio"],
-      "env": { "MSF_PASSWORD": "yourpassword" }
-    },
     "adaptix": {
       "command": "python3",
-      "args": ["/root/osai/tools/claude/adaptix_mcp.py"],
+      "args": ["/home/kali/osai/tools/claude/adaptix_mcp.py"],
       "env": {
         "ADAPTIX_URL": "https://localhost:4321",
         "ADAPTIX_ENDPOINT": "/endpoint",

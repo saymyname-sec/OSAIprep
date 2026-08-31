@@ -13,7 +13,10 @@ mkdir -p ~/osai/tools/claude
 mkdir -p ~/osai/tools/arsenal/{payloads/ligolo,wordlists}
 
 echo '[]' > $LAB_DIR/loot/findings.json
-echo '[]' > $LAB_DIR/loot/creds.json
+echo '[]' > $LAB_DIR/state/creds.json
+
+# Point ~/osai/current at the active lab — all skills read/write through this
+ln -sfn $LAB_DIR ~/osai/current
 
 cat > $LAB_DIR/state/scope.md << SCOPE
 # Engagement Scope — $LAB
@@ -52,7 +55,7 @@ cat > ~/osai/CLAUDE.md << CTX
 
 ## State files
 - Findings: $LAB_DIR/loot/findings.json
-- Creds:    $LAB_DIR/loot/creds.json
+- Creds:    $LAB_DIR/state/creds.json
 - Scope:    $LAB_DIR/state/scope.md
 - Network:  $LAB_DIR/state/network_map.md
 - Progress: $LAB_DIR/state/progress.md

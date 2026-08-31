@@ -3,14 +3,14 @@ Compile all engagement findings into a SysReptor-paste-ready report. $ARGUMENTS 
 ## Step 1: Load state (token-efficient)
 ```bash
 # Findings summary
-jq '[.[] | {id, title, severity, host, mitre, screenshot}]' ~/osai/loot/findings.json 2>/dev/null
+jq '[.[] | {id, title, severity, host, mitre, screenshot}]' ~/osai/current/loot/findings.json 2>/dev/null
 
 # Credential count and list
-jq '[.[] | {host, domain, username, type, source}]' ~/osai/state/creds.json 2>/dev/null
+jq '[.[] | {host, domain, username, type, source}]' ~/osai/current/state/creds.json 2>/dev/null
 
 # Scope and network map
-cat ~/osai/state/scope.md
-cat ~/osai/state/network_map.md
+cat ~/osai/current/state/scope.md
+cat ~/osai/current/state/network_map.md
 ```
 
 ## Step 2: Executive summary
@@ -93,7 +93,7 @@ For each finding entry in SysReptor:
 │ Description     → paste Summary paragraph
 │ Attack Narrative → paste Steps to Reproduce
 │ Evidence        → paste command output (trimmed to key lines)
-│ Screenshot      → drag from ~/osai/screenshots/<filename>
+│ Screenshot      → drag from ~/osai/current/screenshots/<filename>
 │ CVSS            → Critical=9.8, High=7.5, Medium=5.0, Low=2.5
 │ ATLAS           → paste from MITRE table (AI findings only)
 └ Remediation     → paste Recommendation from finding block
@@ -103,7 +103,7 @@ For each finding entry in SysReptor:
 For findings with `screenshot: pending`:
 ```
 [!] MISSING SCREENSHOT: F-00X — <title> on <host>
-    flameshot gui -p ~/osai/screenshots/
+    flameshot gui -p ~/osai/current/screenshots/
 ```
 For findings with `steps: TBD`:
 ```
@@ -111,5 +111,5 @@ For findings with `steps: TBD`:
 ```
 
 ## Step 9: Write output
-Write to ~/osai/loot/report_<timestamp>.md
-Print: `[+] Report ready: ~/osai/loot/report_<timestamp>.md — N findings, X creds, Y chains`
+Write to ~/osai/current/loot/report_<timestamp>.md
+Print: `[+] Report ready: ~/osai/current/loot/report_<timestamp>.md — N findings, X creds, Y chains`

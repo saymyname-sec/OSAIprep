@@ -11,17 +11,17 @@ For each target in $ARGUMENTS:
 
 **--fast:**
 ```bash
-nmap -T4 --top-ports 1000 -oN ~/osai/recon/<IP>_$TS.txt <IP> &
+nmap -T4 --top-ports 1000 -oN ~/osai/current/recon/<IP>_$TS.txt <IP> &
 ```
 
 **default:**
 ```bash
-nmap -T4 -sV --top-ports 1000 -sC -oN ~/osai/recon/<IP>_$TS.txt <IP> &
+nmap -T4 -sV --top-ports 1000 -sC -oN ~/osai/current/recon/<IP>_$TS.txt <IP> &
 ```
 
 **--deep:**
 ```bash
-nmap -T4 -sV -p- --script=vuln -oN ~/osai/recon/<IP>_$TS.txt <IP> &
+nmap -T4 -sV -p- --script=vuln -oN ~/osai/current/recon/<IP>_$TS.txt <IP> &
 ```
 
 Wait for all: `wait`
@@ -29,7 +29,7 @@ Wait for all: `wait`
 ## Step 3: Extract and triage each result (token-efficient)
 For each scan file — DO NOT read full file into context. Extract only open ports:
 ```bash
-grep -E '^[0-9]+/tcp.*open' ~/osai/recon/<IP>_$TS.txt
+grep -E '^[0-9]+/tcp.*open' ~/osai/current/recon/<IP>_$TS.txt
 ```
 
 **Critical attack surface:**
@@ -60,7 +60,7 @@ smbclient -L //<IP> -N
 
 **Web (80/443 open):**
 ```bash
-gobuster dir -u http://<IP> -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 40 -o ~/osai/recon/<IP>_web_$TS.txt
+gobuster dir -u http://<IP> -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 40 -o ~/osai/current/recon/<IP>_web_$TS.txt
 whatweb http://<IP>
 ```
 
@@ -91,8 +91,8 @@ HOST          PORTS                      PRIORITY    NEXT ACTION
 <IP>          22                         MEDIUM      Cred spray
 ```
 
-Write triage to ~/osai/state/recon_summary.md (append).
-Append each new host to ~/osai/state/network_map.md (IP, open ports, OS guess, role guess, timestamp).
+Write triage to ~/osai/current/state/recon_summary.md (append).
+Append each new host to ~/osai/current/state/network_map.md (IP, open ports, OS guess, role guess, timestamp).
 
 ## Token discipline
 - Extract open ports with grep — never paste full nmap output into context

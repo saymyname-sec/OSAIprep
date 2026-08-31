@@ -7,7 +7,7 @@ Actions:
 - `/osai-cred-vault spray <targets>` — print spray commands for all plaintext passwords
 - `/osai-cred-vault export` — SysReptor-ready credential table
 
-State file: ~/osai/state/creds.json (JSON array)
+State file: ~/osai/current/state/creds.json (JSON array)
 
 ## Action: add
 Parse free-form credential input — accepts:
@@ -16,7 +16,7 @@ Parse free-form credential input — accepts:
 - secretsdump lines: `domain\user:RID:LM:NTLM:::`
 - key:value pairs
 
-Load ~/osai/state/creds.json (create `[]` if missing). Check for exact duplicates (same username + secret). Append new entry:
+Load ~/osai/current/state/creds.json (create `[]` if missing). Check for exact duplicates (same username + secret). Append new entry:
 ```json
 {
   "id": "<auto-increment>",
@@ -60,10 +60,10 @@ kerbrute passwordspray -d DOMAIN --dc DC_IP users.txt '<password>'
 ⚠️ WARN: "Check lockout policy before spraying — default AD lockout is 5 attempts. Run: net accounts /domain"
 
 ## Action: export
-Generate SysReptor-ready full credential table (no truncation). Write to ~/osai/loot/creds_export.md and print to stdout.
+Generate SysReptor-ready full credential table (no truncation). Write to ~/osai/current/loot/creds_export.md and print to stdout.
 
 ## Directory check
-Ensure ~/osai/state/ exists: `mkdir -p ~/osai/state/`
+Ensure ~/osai/current/state/ exists: `mkdir -p ~/osai/current/state/`
 On parse errors: print the raw line and ask user to confirm format — never silently drop data.
 
 ## Adaptix sync (when Adaptix MCP is active)
@@ -82,4 +82,4 @@ To pull creds Adaptix already captured (e.g. from agent keylogger or credential 
 ```
 list_credentials()
 ```
-Then add any new ones to ~/osai/state/creds.json with the 'add' action to keep both stores in sync.
+Then add any new ones to ~/osai/current/state/creds.json with the 'add' action to keep both stores in sync.

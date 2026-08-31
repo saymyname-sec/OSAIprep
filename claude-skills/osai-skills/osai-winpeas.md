@@ -122,4 +122,4 @@ su hacker   # password: hacked123
 
 PRIORITY ORDER: <ordered list — what to try first>
 ```
-Write to ~/osai/loot/<hostname>_privesc.md
+Write to ~/osai/current/loot/<hostname>_privesc.md

