@@ -32,18 +32,29 @@ Set by /osai-engage. All skills read/write through the symlink:
 | Got IPs to scan | `/osai-parallel-recon <ip1,ip2,...>` |
 | Got ANY raw tool output | `/osai-triage` — ALWAYS before analyzing |
 | Found web / unknown ports | `/osai-ai-hunter <ip>` — check for LLM/RAG/vector-DB/agent-card |
+| Web app is the foothold | `/osai-web <url>` — LFI/SQLi/SSTI/upload/cmdi/SSRF |
 | Found 445/389/88/3268 | `/osai-ad-attack` with enum output |
 
 ### Post-exploitation
 | Situation | Command |
 |-----------|---------|
 | Got WinPEAS/LinPEAS output | `/osai-winpeas` — never paste raw, pipe through skill |
+| Writable path a priv proc trusts | `/osai-hijack` — python-module/DLL/PATH/LD_PRELOAD/unquoted-service |
 | Found a credential (any type) | `/osai-cred-vault --add ...` immediately |
 | Have creds + 2+ hosts known | `/osai-spray` — spray everything you have before manual work |
 | AD foothold gained | Run SharpHound → import to BloodHound → query paths to DA, then `/osai-ad-attack` |
 | Need to reach new subnet | `/osai-pivot` |
 | Found chatbot / LLM / RAG | `/osai-rag-attack <url>` |
 | Linux privesc needed | `/osai-linux-attack` |
+
+### AI-vector attacks (30 of 100 exam points — prioritise)
+| Situation | Command |
+|-----------|---------|
+| Chatbot / RAG / LLM endpoint | `/osai-rag-attack <url>` |
+| Vector DB (Qdrant 6333 / Weaviate 8080) | `/osai-embed <host>` — dump + invert to secrets |
+| MCP server / tool surface | `/osai-mcp-attack <host>` — poison tools / abuse read+exec |
+| Multi-agent / A2A mesh (8000-8010) | `/osai-a2a <host>` — card enum, injection, scan bypass |
+| SSRF / exposed cloud metadata | `/osai-cloud-loot <ctx>` — IMDS → IAM chain → secrets |
 
 ### Credential rule (non-negotiable)
 Before attacking ANY service: `/osai-cred-vault --query <host>`.
