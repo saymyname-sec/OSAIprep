@@ -123,12 +123,15 @@ cat <path>   # e.g. C:\Users\Administrator\Desktop\proof.txt  or  /root/proof.tx
   "sysreptor_exported": false
 }
 ```
-3. Print the proof block and a screenshot reminder — the screenshot MUST show
-   `whoami` (or `hostname`) alongside the flag contents to be accepted as evidence:
+3. Print the proof block and a screenshot reminder. An interactive shell is NOT
+   required (per exam guide — proof may be retrieved by any valid method):
+   - Traditional box WITH a shell: screenshot `whoami`+`hostname`+flag in one frame.
+   - AI machine / no shell: screenshot the exact request (prompt/curl) AND the
+     response or exfil that returned the proof, so the retrieval method is provable.
 ```
 [+] PROOF LOGGED: <host> — <path>
     Value: <flag_value>
-[!] SCREENSHOT REQUIRED (whoami + hostname + flag visible in one frame):
+[!] SCREENSHOT REQUIRED (proof contents + the method that produced them):
     flameshot gui -p ~/osai/current/screenshots/
 ```
 4. If the host is the **DC** and this is Domain Admin proof — remind:
