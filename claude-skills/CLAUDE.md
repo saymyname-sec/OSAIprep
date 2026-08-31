@@ -60,10 +60,12 @@ Kapi creates payloads manually. Claude's role: suggest delivery command, confirm
 ## Directory Structure
 ```
 ~/osai/
-├── tools/claude/        adaptix_mcp.py and other MCP servers
-├── arsenal/
-│   ├── payloads/        ligolo agents, winpeas, linpeas
-│   └── wordlists/       custom lists
+├── tools/
+│   ├── claude/          adaptix_mcp.py
+│   ├── arsenal/         winpeas.exe, linpeas.sh, SharpHound, Rubeus, PowerUp
+│   ├── ligolo/          ligolo agent binaries
+│   ├── AdaptixC2/       Adaptix C2 server
+│   └── custom/          custom scripts
 └── labs/
     └── <labname>/
         ├── recon/        nmap, gobuster, ldap output

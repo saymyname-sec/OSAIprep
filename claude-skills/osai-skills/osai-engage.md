@@ -10,7 +10,7 @@ LAB_DIR=~/osai/labs/$LAB
 
 mkdir -p $LAB_DIR/{recon,loot,screenshots,state,www}
 mkdir -p ~/osai/tools/claude
-mkdir -p ~/arsenal/{payloads/ligolo,wordlists}
+mkdir -p ~/osai/tools/arsenal/{payloads/ligolo,wordlists}
 
 echo '[]' > $LAB_DIR/loot/findings.json
 echo '[]' > $LAB_DIR/loot/creds.json
@@ -72,9 +72,9 @@ pip install websockets --break-system-packages 2>/dev/null | tail -1
 which ligolo-proxy || echo "[!] MISSING: ligolo-proxy"
 which evil-winrm   || echo "[!] MISSING: evil-winrm"
 which impacket-secretsdump || echo "[!] MISSING: impacket"
-ls ~/arsenal/payloads/winpeas.exe 2>/dev/null || echo "[!] MISSING: ~/arsenal/payloads/winpeas.exe"
-ls ~/arsenal/payloads/linpeas.sh  2>/dev/null || echo "[!] MISSING: ~/arsenal/payloads/linpeas.sh"
-ls ~/arsenal/payloads/ligolo/     2>/dev/null || echo "[!] MISSING: ~/arsenal/payloads/ligolo/ agents"
+ls ~/osai/tools/arsenal/winpeas.exe 2>/dev/null || echo "[!] MISSING: ~/osai/tools/arsenal/winpeas.exe"
+ls ~/osai/tools/arsenal/linpeas.sh  2>/dev/null || echo "[!] MISSING: ~/osai/tools/arsenal/linpeas.sh"
+ls ~/osai/tools/ligolo/     2>/dev/null || echo "[!] MISSING: ~/osai/tools/ligolo/ agents"
 ```
 
 ## Step 5: Adaptix C2 — check status via MCP tools
