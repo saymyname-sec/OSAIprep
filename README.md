@@ -202,10 +202,25 @@ Configure in `~/.claude.json` → `"mcpServers": { ... }`.
   Or configure SSE mode pointing to `http://127.0.0.1:9876`
 - **Key tools it gives Claude:** send request, repeat request, active scan, get proxy history, intruder attack
 
-#### Adaptix C2 MCP — custom (available after Monday)
-- **Purpose:** Create listeners, generate agents, list active sessions, run post-exploitation commands — all from Claude Code without touching Adaptix UI
-- **Install:** See separate repo (available Monday)
-- **Why it matters:** Full C2 lifecycle from within the Claude execution loop
+#### Adaptix C2 MCP — custom (`~/osai/tools/claude/adaptix_mcp.py`)
+- **Purpose:** Control agents, execute commands, manage SOCKS5/port-forward tunnels, sync credentials — all from Claude Code without touching the UI
+- **Dependency:** `pip install websockets --break-system-packages` (for interactive PTY shells)
+- **Critical:** `set_sleep(agent_id, 0)` **must** be called before `start_socks5` — tunnel won't work otherwise
+- **Key tools:** `list_agents` · `execute_command` + `get_task_output` · `shell_terminal` · `set_sleep` · `start_socks5` · `start_port_forward` · `stop_tunnel` · `list_credentials` · `add_credential` · `add_target`
+- **Config:**
+  ```json
+  "adaptix": {
+    "command": "python3",
+    "args": ["/root/osai/tools/claude/adaptix_mcp.py"],
+    "env": {
+      "ADAPTIX_URL": "https://localhost:4321",
+      "ADAPTIX_ENDPOINT": "/endpoint",
+      "ADAPTIX_USER": "operator",
+      "ADAPTIX_PASS": "YOUR_ADAPTIX_PASSWORD",
+      "ADAPTIX_VERIFY": "false"
+    }
+  }
+  ```
 
 #### Filesystem MCP — built into Claude Code
 - **Purpose:** Read/write files on Kali directly from Claude Code
@@ -285,8 +300,15 @@ Lets Claude search HackTricks, PayloadsAllTheThings, and your notes repos withou
       "env": { "MSF_PASSWORD": "yourpassword" }
     },
     "adaptix": {
-      "command": "...",
-      "args": ["..."]
+      "command": "python3",
+      "args": ["/root/osai/tools/claude/adaptix_mcp.py"],
+      "env": {
+        "ADAPTIX_URL": "https://localhost:4321",
+        "ADAPTIX_ENDPOINT": "/endpoint",
+        "ADAPTIX_USER": "operator",
+        "ADAPTIX_PASS": "YOUR_ADAPTIX_PASSWORD",
+        "ADAPTIX_VERIFY": "false"
+      }
     }
   }
 }
