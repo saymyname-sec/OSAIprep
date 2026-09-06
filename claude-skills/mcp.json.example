@@ -1,0 +1,47 @@
+{
+  "_comment": "OSAI recommended MCP set. Copy to your project root as .mcp.json on Kali and edit paths/tokens. Keep this set LEAN — every server's tool schemas load each turn. See /osai-help mcp for setup. JSON has no comments, so _comment keys are ignored by the client.",
+
+  "mcpServers": {
+
+    "adaptix": {
+      "_role": "C2 — async execute_command, socks5/ligolo tunnels, credential store",
+      "command": "python3",
+      "args": ["/home/kapi/osai/tools/claude/adaptix_mcp.py"]
+    },
+
+    "bloodhound": {
+      "_role": "READ-ONLY AD graph queries in natural language. Feed answers to /osai-ad-attack.",
+      "_setup": "clone bloodhound_mcp; run BloodHound CE; create an API token in BH settings",
+      "command": "python3",
+      "args": ["/home/kapi/tools/bloodhound_mcp/bloodhound_mcp.py"],
+      "env": {
+        "BLOODHOUND_URL": "http://localhost:8080",
+        "BLOODHOUND_TOKEN_ID": "<EDIT_TOKEN_ID>",
+        "BLOODHOUND_TOKEN_KEY": "<EDIT_TOKEN_KEY>"
+      }
+    },
+
+    "pentestmcp": {
+      "_role": "Lean enumeration accelerator: netexec, bloodhound, john, certipy, nmap. Enum only; keep exploitation manual.",
+      "_setup": "clone the pentest-mcp-server repo; adjust path below",
+      "command": "python3",
+      "args": ["/home/kapi/tools/pentest-mcp-server/server.py"]
+    },
+
+    "garak": {
+      "_role": "LLM vuln scans (Ollama/OpenAI/HF/GGML): discover model -> probes -> scan -> report. Your automated AI-scan phase.",
+      "_setup": "clone EdenYavin/Garak-MCP; needs Python 3.11+ and uv",
+      "command": "uv",
+      "args": ["--directory", "/home/kapi/tools/Garak-MCP", "run", "garak-mcp"]
+    }
+
+  },
+
+  "_optional_AD_only": {
+    "_note": "AdStrike = 53 AD tools (netexec/impacket/certipy/kerbrute/bloodhound/powerview/rubeus). HEAVY (53 schemas load every turn) + autonomous. Add to mcpServers ONLY during the AD phase, then remove. Enum-drive it; keep exploitation controlled.",
+    "adstrike": {
+      "command": "/home/kapi/tools/AdStrike/venv/bin/python3",
+      "args": ["/home/kapi/tools/AdStrike/mcp_server.py"]
+    }
+  }
+}

