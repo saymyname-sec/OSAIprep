@@ -83,8 +83,9 @@ ls ~/osai/tools/ligolo/     2>/dev/null || echo "[!] MISSING: ~/osai/tools/ligol
 ## Step 5: Adaptix C2 — check status via MCP tools
 Call in sequence:
 
-**5a. Confirm C2 ready:**
-`list_listeners()` — if empty, start Adaptix server and create HTTP/S listener before continuing.
+**5a. Confirm MCP connects — do NOT create a listener yet:**
+`list_listeners()` — just confirm Adaptix MCP responds. The listener is created LATER, when a
+foothold is imminent (see CLAUDE.md "Foothold sequence"): raw shell → Adaptix agent → persistence → Ligolo. Not at engage.
 
 **5b. Note existing agents:**
 `list_agents()` — print agent IDs, hostnames, users, elevated status.
@@ -97,17 +98,13 @@ add_target(hostname="DC01", address="<DC_IP>", domain="<DOMAIN>", os_desc="Windo
 
 **5d. Execution reminder:** `execute_command(agent_id, cmd)` is ASYNC — always follow with `get_task_output(agent_id)`.
 
-## Step 6: Ligolo-ng relay (run in tmux pane 'ligolo')
+## Step 6: Ligolo-ng relay — DEFERRED (do NOT start at engage)
+Start the relay only when a foothold is imminent, and run the Ligolo agent THROUGH the Adaptix
+agent (see /osai-pivot). Reference command for when the time comes:
 ```bash
-# Start relay
+# Start ONLY after a foothold is imminent — not at engage:
 sudo ligolo-proxy -selfcert -laddr 0.0.0.0:11601
-
-# After agent connects:
-#   ligolo-ng>> session   (select)
-#   ligolo-ng>> start     (activate tun0)
-
-# Add routes for each subnet in scope:
-sudo ip route add <SUBNET> dev ligolo
+# then: ligolo>> session → start (tun0) ; and: sudo ip route add <SUBNET> dev ligolo
 ```
 
 ## Step 7: HTTP payload server (run in tmux pane 'http')
@@ -126,14 +123,14 @@ python3 -m http.server 8000 --directory $LAB_DIR/www/
 ║ Kali IP:  <KALI_IP>                           ║
 ║ Lab dir:  ~/osai/labs/<LAB>                   ║
 ╠════════════════════════════════════════════════╣
-║ Adaptix:  list_listeners() → confirm active   ║
-║ Ligolo:   tmux pane 'ligolo' → relay ready    ║
+║ Adaptix:  MCP reachable (listener set LATER)  ║
+║ Ligolo:   deferred — after a foothold          ║
 ║ HTTP srv: tmux pane 'http'  → port 8000       ║
 ╠════════════════════════════════════════════════╣
-║ NEXT STEPS:                                   ║
+║ NEXT STEPS (C2/pivot come AFTER a shell):     ║
 ║  1. /osai-parallel-recon <scope IPs>          ║
 ║  2. /osai-ai-hunter <web hosts>               ║
-║  3. Confirm Adaptix listener → list_listeners ║
-║  4. Start Ligolo relay in tmux                ║
+║  3. Find path → get RAW shell first           ║
+║  4. THEN Adaptix agent+persist → Ligolo       ║
 ╚════════════════════════════════════════════════╝
 ```

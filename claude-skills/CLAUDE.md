@@ -32,6 +32,16 @@ recon → foothold → loot creds → check vault → pivot → re-recon new sub
 ```
 Every pivot opens unscanned hosts. After /osai-pivot → straight back to /osai-parallel-recon.
 
+## Foothold sequence — where C2 & pivot fit (Kapi's methodology)
+**C2 and pivot are POST-foothold.** Before a shell, Claude's job is path-finding + proposing how to reach the shell — never reach for C2/tunnel first. Per target, in order:
+1. **Enumerate → find the attack path** (research it, rank hypotheses).
+2. **Get the INITIAL RAW SHELL first** — Claude proposes the exploit / revshell one-liner (`/osai-revshell`). This is a plain shell (nc/HTTP/code-exec), **not** yet an Adaptix beacon.
+3. **Establish the Adaptix agent, then PERSISTENCE** — from the raw shell, drop & run the Adaptix beacon, then set persistence so the connection is never lost (scheduled task / run key / service). Confirm via `list_agents()`.
+4. **Set up the Ligolo tunnel THROUGH Adaptix** — only when a new subnet must be reached: deploy the Ligolo agent via the Adaptix agent (`/osai-pivot`), start tun, add routes.
+5. **Loot → `/osai-cred-vault` → re-recon the new subnet → repeat.**
+
+Claude may **attempt** steps 3–4 via the Adaptix MCP; **if a step fails, log it and hand it to Kapi to do manually — do not loop.** Listeners/infra (Adaptix listener, Ligolo proxy) are stood up when a foothold is imminent (path found), **NOT at `/osai-engage`** — engage only builds dirs + recon readiness.
+
 ---
 
 ## OPERATING MODE — senior red teamer, not a command runner
@@ -132,7 +142,7 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 ---
 
 ## MCP servers (Kali-local; drive standard tools)
-- **Adaptix C2** — `execute_command()` is ASYNC → poll `get_task_output()` ≤5×/~30s then move on. `set_sleep(id,0)` REQUIRED before `start_socks5()`, **restore sleep after**. Prefer Ligolo-ng over SOCKS5. `shell_terminal()` needs `pip install websockets --break-system-packages`.
+- **Adaptix C2** — deploy the agent only AFTER the initial raw shell (see Foothold sequence): raw shell → Adaptix beacon → **persistence** → Ligolo through the agent. `execute_command()` is ASYNC → poll `get_task_output()` ≤5×/~30s then move on. `set_sleep(id,0)` REQUIRED before `start_socks5()`, **restore sleep after**. Prefer Ligolo-ng over SOCKS5. `shell_terminal()` needs `pip install websockets --break-system-packages`. If an agent/persist/tunnel step fails, hand it to Kapi — don't loop.
 - **BloodHound MCP** (read-only) — ask it in natural language for paths to DA, Kerberoastable/DCSync/ACL edges. Use it to REASON about AD; feed answers into `/osai-ad-attack`.
 - **PentestMCP** (lean: netexec/bloodhound/john/certipy/nmap) — enumeration accelerator. Use for enum; keep exploitation manual/controlled.
 - **Garak MCP** — LLM vuln scans (Ollama/OpenAI/HF/GGML): discover model → pick probes → scan → read report. This is your automated AI-scan phase.

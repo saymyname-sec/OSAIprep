@@ -200,10 +200,14 @@ In a `claude` session launched from a lab dir:
 
 ```
 /osai-engage → /osai-parallel-recon → per host: /osai-ai-hunter|/osai-web|/osai-win-enum
-  → attack skill → /osai-notes + /osai-cred-vault as you go
-  → /osai-spray / /osai-pivot → re-recon → repeat
+  → find attack path → get RAW shell first (/osai-revshell / exploit)
+  → THEN Adaptix agent → persistence → (new subnet?) Ligolo THROUGH Adaptix (/osai-pivot)
+  → /osai-notes + /osai-cred-vault as you go → /osai-spray → re-recon → repeat
 When context gets heavy: /clear then /osai-plan (rehydrates from state files)
 ~2h left: /osai-report   ·   after lab: /osai-retro
 ```
+C2 + pivot are POST-foothold. Adaptix listener + Ligolo proxy stand up when a foothold is
+imminent, NOT at engage. Claude may attempt agent/persistence/tunnel via the Adaptix MCP; if
+it fails, do it manually. See CLAUDE.md "Foothold sequence".
 Full detail any time: `/osai-help`. Reasoning framework + MCP rules live in
 `~/.claude/CLAUDE.md`.
