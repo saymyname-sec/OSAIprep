@@ -1,0 +1,7 @@
+# Joplin note attachments — large media, kept locally, not pushed to GitHub
+_resources/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
