@@ -99,8 +99,8 @@ python3 -m http.server 8000 --directory ~/osai/www/
 
 # 5. Start Burp Suite and enable MCP server (port 9876)
 
-# 6. Initial sweep of all provided IPs simultaneously
-/osai-parallel-recon <IP1>,<IP2>,...
+# 6. Initial sweep of all provided IPs (HexStrike MCP)
+#    intelligent_smart_scan / nmap_advanced_scan / autorecon_comprehensive over scope.txt
 ```
 
 ### Every new host
@@ -202,23 +202,26 @@ Configure in `~/.claude.json` → `"mcpServers": { ... }`.
   Or configure SSE mode pointing to `http://127.0.0.1:9876`
 - **Key tools it gives Claude:** send request, repeat request, active scan, get proxy history, intruder attack
 
-#### Adaptix C2 MCP — custom (`~/osai/tools/claude/adaptix_mcp.py`)
-- **Purpose:** Control agents, execute commands, manage SOCKS5/port-forward tunnels, sync credentials — all from Claude Code without touching the UI
-- **Dependency:** `pip install websockets --break-system-packages` (for interactive PTY shells)
-- **Critical:** `set_sleep(agent_id, 0)` **must** be called before `start_socks5` — tunnel won't work otherwise
-- **Key tools:** `list_agents` · `execute_command` + `get_task_output` · `shell_terminal` · `set_sleep` · `start_socks5` · `start_port_forward` · `stop_tunnel` · `list_credentials` · `add_credential` · `add_target`
+#### Metasploit MCP — `msfmcpd` (in-framework, official)
+- **Purpose:** THE shell handler and durable engagement state (msfdb). Catch/upgrade raw shells into Metasploit sessions, run modules, query hosts/services/creds/loot. One workspace per lab.
+- **Setup:** `msfdb init`, then run `msfmcpd` (stdio). Read-only by default; `--enable-dangerous-actions` unlocks module execution + session write.
+- **Rule:** all payload generation and session work go here — **never** HexStrike's `metasploit_run` / `msfvenom_generate` (one-shot, no session persistence, invisible to msfdb).
 - **Config:**
   ```json
-  "adaptix": {
-    "command": "python3",
-    "args": ["/home/kali/osai/tools/claude/adaptix_mcp.py"],
-    "env": {
-      "ADAPTIX_URL": "https://localhost:4321",
-      "ADAPTIX_ENDPOINT": "/endpoint",
-      "ADAPTIX_USER": "operator",
-      "ADAPTIX_PASS": "YOUR_ADAPTIX_PASSWORD",
-      "ADAPTIX_VERIFY": "false"
-    }
+  "metasploit": {
+    "command": "msfmcpd",
+    "args": ["--user", "<msf_user>", "--password", "<msf_pw>", "--enable-dangerous-actions"]
+  }
+  ```
+
+#### HexStrike AI MCP — enumeration + web engine (151 tools)
+- **Purpose:** nmap/rustscan, nuclei/ffuf/feroxbuster/katana/dalfox/sqlmap/arjun, AD **enumeration only** (netexec/responder/rpcclient/enum4linux-ng/smbmap). Returns structured JSON — read it directly. Does NOT do post-exploitation, AD exploitation, or AI tooling — those stay skills.
+- **Critical security:** `hexstrike_server` binds `0.0.0.0:8888` with no auth and exposes `execute_command` (unauthenticated RCE). Firewall to loopback and re-check after every tunnel: `sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP`
+- **Config:**
+  ```json
+  "hexstrike": {
+    "command": "hexstrike_mcp",
+    "args": ["--server", "http://127.0.0.1:8888", "--timeout", "300"]
   }
   ```
 
@@ -234,10 +237,11 @@ Configure in `~/.claude.json` → `"mcpServers": { ... }`.
 
 ### High value
 
-> **Payloads & reverse shells are built and triggered manually.** There is no
-> Metasploit/msfconsole MCP in this setup — Kapi generates all payloads and fires
-> reverse shells by hand to keep OPSEC control and avoid tripping AI guardrails.
-> Claude assists with delivery commands and confirms callbacks via the Adaptix MCP.
+> **Metasploit is the shell handler** — via the `metasploit` MCP (`msfmcpd`) — and the
+> OSAI exam is open-book with no tooling restriction. Methodology: raw shell first, then a
+> Metasploit session + persistence, then Ligolo through that session (see
+> `claude-skills/CLAUDE.md` "Foothold sequence"). Claude may drive it and hands off to Kapi
+> on failure. HexStrike's one-shot msf wrappers are never used (no session persistence).
 
 #### Kali Linux Shell MCP — optional but powerful
 - **Purpose:** Run arbitrary Kali commands (nmap, gobuster, impacket, etc.) from Claude Code without leaving the AI loop
@@ -282,20 +286,20 @@ Lets Claude search HackTricks, PayloadsAllTheThings, and your notes repos withou
       "args": ["-y", "@portswigger/mcp-proxy", "--port", "9876"],
       "transport": "stdio"
     },
-    "adaptix": {
-      "command": "python3",
-      "args": ["/home/kali/osai/tools/claude/adaptix_mcp.py"],
-      "env": {
-        "ADAPTIX_URL": "https://localhost:4321",
-        "ADAPTIX_ENDPOINT": "/endpoint",
-        "ADAPTIX_USER": "operator",
-        "ADAPTIX_PASS": "YOUR_ADAPTIX_PASSWORD",
-        "ADAPTIX_VERIFY": "false"
-      }
+    "metasploit": {
+      "command": "msfmcpd",
+      "args": ["--user", "<msf_user>", "--password", "<msf_pw>", "--enable-dangerous-actions"]
+    },
+    "hexstrike": {
+      "command": "hexstrike_mcp",
+      "args": ["--server", "http://127.0.0.1:8888", "--timeout", "300"]
     }
   }
 }
 ```
+> HexStrike requires `hexstrike_server --port 8888` running AND firewalled to loopback
+> (`sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP`). See `claude-skills/mcp.json.example`
+> for the toolkit's canonical MCP set (adds BloodHound MCP).
 
 ---
 
@@ -320,7 +324,7 @@ Build this before the exam and test every binary:
 │   ├── SharpHound.exe
 │   ├── procdump64.exe              # Sysinternals, signed
 │   ├── nc64.exe
-│   └── adaptix-agent.exe
+│   └── (Meterpreter payloads generated per-target via the metasploit MCP)
 ├── scripts/
 │   ├── gen_payload.sh
 │   └── serve.sh                   # start HTTP server + Ligolo
@@ -336,7 +340,7 @@ Build this before the exam and test every binary:
 which ligolo-proxy ligolo-agent
 
 # AD / Windows
-which netexec crackmapexec
+which netexec
 which impacket-secretsdump impacket-GetUserSPNs impacket-psexec impacket-wmiexec
 which evil-winrm xfreerdp3 kerbrute
 which smbclient smbmap rpcclient

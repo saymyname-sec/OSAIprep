@@ -16,9 +16,10 @@ $ARGUMENTS = optional section: inventory, example, decisiontree, dirtree, resear
 ## inventory
 **Lifecycle:** engage (init lab) · notes (findings+MITRE, SysReptor-ready) · cred-vault (add/list/query/spray/export) · report (compile) · retro (post-lab improvements) · triage (raw output → actionable)
 **Reasoning:** plan (Autonomy Contract on state) · owasp (LLM Top 10 checklist) · chains (name the chain, show remaining links) · help (this)
-**Recon/enum:** parallel-recon (fan-out nmap) · ai-hunter (fingerprint AI surface) · win-enum (Windows/AD standard-tool enum, no custom scripts)
+**Recon/enum:** HexStrike MCP (nmap/nuclei/ffuf/… — replaces parallel-recon & web scanning) · ai-hunter (fingerprint AI surface) · win-enum (Windows/AD standard-tool enum, no custom scripts)
 **AI attacks:** rag-attack · embed (vector DB/inversion) · mcp-attack · a2a · cloud-loot · inject (prompt-injection payload cheat sheet)
-**Traditional:** web · ad-attack (Kerberoast/delegation/DCSync/ADCS) · relay (coercion→NTLM relay) · linux-attack (privesc + container escape) · winpeas (parse PEAS) · hijack (DLL/PATH/LD_PRELOAD/python) · spray · pivot
+**Traditional:** ad-attack (Kerberoast/delegation/DCSync/ADCS) · relay (coercion→NTLM relay) · linux-attack (privesc + container escape) · winpeas (parse PEAS) · hijack (DLL/PATH/LD_PRELOAD/python) · spray · pivot (Ligolo/MSF through the session)
+(web scanning → HexStrike; parallel-recon & web skills archived → claude-skills/_archive/)
 **Cheat sheets:** bypass (AMSI/AV/CLM/Defender/LOLBin) · revshell · upload · transfer (tunnel/transfer/exfil)
 
 ## example
@@ -43,10 +44,10 @@ Then proceed autonomously unless redirected.
 ## decisiontree
 ```
 Stuck on a host?
-├─ Enum complete? NO → /osai-parallel-recon --deep (full 65535 + UDP top-20)
+├─ Enum complete? NO → HexStrike deep scan (nmap_advanced_scan full 65535 + UDP top-20 / autorecon_comprehensive)
 │                 YES → per open port:
 │   ├─ tried known creds? → /osai-cred-vault --query <host>
-│   ├─ web? → /osai-web ; AI? → /osai-ai-hunter → /osai-owasp
+│   ├─ web? → HexStrike web stack (nuclei/ffuf/sqlmap/…) ; AI? → /osai-ai-hunter → /osai-owasp
 │   ├─ known CVE for version? → research agent vs hacktricks
 │   └─ nothing → move on, return after more creds
 ├─ Shell but no privesc?
@@ -65,7 +66,8 @@ Stuck on a host?
 ```
 ~/osai/
 ├── current -> labs/<active>     symlink all skills use
-├── tools/  claude/(adaptix_mcp.py) arsenal/(winpeas,linpeas,SharpHound,Rubeus,PowerUp) ligolo/ AdaptixC2/ custom/
+├── tools/  arsenal/(winpeas,linpeas,SharpHound,Rubeus,PowerUp) ligolo/ custom/   (C2 = Metasploit/msfdb; enum = HexStrike)
+├── notes/   Obsidian vault on the hgfs share (.vault-ok marker) — curated notes only
 ├── labs/<labname>/
 │   ├── recon/       nmap, gobuster, ldap output
 │   ├── loot/        findings.json, flags, exports
@@ -99,9 +101,9 @@ ls ~/repos/OSAI 2>/dev/null || echo "[!] OSAI notes repo missing — clone from 
 ```
 
 ## mcp
-See the `.mcp.json` example shipped with the toolkit. Recommended default set (lean, low-risk):
-- **BloodHound MCP** — clone bloodhound_mcp, generate a BH CE API token, set env vars, register in MCP config, upload your bloodhound-python collection. Read-only graph queries.
-- **PentestMCP** — netexec/bloodhound/john/certipy/nmap wrapper for enumeration.
-- **Garak MCP** — Python 3.11+, `uv`; clone EdenYavin/Garak-MCP, register; scans Ollama/OpenAI/HF/GGML.
-- **AdStrike (optional, AD-only)** — 53 AD tools; heavy + autonomous. Connect ONLY during the AD phase, disconnect after (token + OPSEC). Enum-drive it; keep exploitation manual.
+See the `.mcp.json` example shipped with the toolkit. Default set (lean, low-risk):
+- **hexstrike** — `hexstrike_server --port 8888` (firewall to loopback: `iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP`, re-check after every tunnel), then `hexstrike_mcp --server http://127.0.0.1:8888`. 151-tool enum + web. Reads JSON directly (no triage). No post-exploitation / no AI tooling.
+- **metasploit** — `msfdb init`, then `msfmcpd --user <u> --password <pw> --enable-dangerous-actions`. THE shell handler + durable state (one workspace per lab). All payloads/sessions here — never HexStrike's metasploit_run/msfvenom_generate.
+- **BloodHound MCP** — clone bloodhound_mcp, run BH CE, create an API token, set env; upload your bloodhound-python collection. Read-only graph queries.
+- Optional AD-only: **AdStrike** (53 tools; heavy) — connect only during the AD phase, disconnect after.
 Review any MCP's code before running it; run on the Kali VM only.

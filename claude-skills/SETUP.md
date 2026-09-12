@@ -12,11 +12,11 @@ Assumes user `kapi`. Replace paths if your username differs.
 | Layer | What | Where it goes |
 |-------|------|---------------|
 | **CLAUDE.md** | Always-on engagement brain (lean router) | `~/.claude/CLAUDE.md` |
-| **27 skills** | On-demand `/osai-*` slash commands | `~/.claude/commands/` |
-| **MCP servers** | Local tool bridges (C2, AD, AI scan) | `.mcp.json` at project root |
+| **25 skills** | On-demand `/osai-*` slash commands | `~/.claude/commands/` |
+| **MCP servers** | HexStrike (enum/web), Metasploit (shells), BloodHound (AD graph) | `.mcp.json` at project root |
 
-Plus: a `~/osai/` working tree, a `~/repos/` knowledge base, an arsenal of binaries,
-a garak venv, Adaptix C2, and Ligolo. All covered below.
+Plus: a `~/osai/` working tree, a `~/osai/notes/` Obsidian vault (Windows share), a
+`~/repos/` knowledge base, an arsenal of binaries, a garak venv, and Ligolo. All below.
 
 The two other-product instruction files (`CLAUDE-CHAT-instructions.md`,
 `CLAUDE-COWORK-instructions.md`) are NOT for the CLI — paste those into claude.ai and
@@ -52,19 +52,21 @@ cd ~/repos/OSAI/claude-skills   # or wherever you cloned it
 
 cp CLAUDE.md ~/.claude/CLAUDE.md
 cp osai-skills/*.md ~/.claude/commands/
-ls ~/.claude/commands | wc -l   # expect 27
+ls ~/.claude/commands | wc -l   # expect 25
 ```
 Verify in a `claude` session: type `/osai-help` — it should list the skill inventory.
 
-**The 27 skills:**
+**The 25 skills:**
 ```
 Lifecycle : engage notes cred-vault report retro triage
 Reasoning : plan owasp chains help
-Recon/enum: parallel-recon ai-hunter win-enum
+Recon/enum: ai-hunter win-enum          (network + web recon → HexStrike MCP)
 AI attacks: rag-attack embed mcp-attack a2a cloud-loot inject
-Traditional: web ad-attack relay linux-attack winpeas hijack spray pivot
+Traditional: ad-attack relay linux-attack winpeas hijack spray pivot
 Cheat sheet: bypass revshell upload transfer
 ```
+> `osai-parallel-recon` and `osai-web` were archived (→ `claude-skills/_archive/`) — HexStrike
+> replaces both. Don't copy the `_archive/` files into `~/.claude/commands/`.
 > If your cheat-sheet skills (bypass/revshell/upload/transfer) live in the repo's
 > `.claude/commands/` instead of `claude-skills/osai-skills/`, copy those too:
 > `cp ~/repos/OSAI/.claude/commands/osai-*.md ~/.claude/commands/`
@@ -74,15 +76,16 @@ Cheat sheet: bypass revshell upload transfer
 ## 3. Working directory tree
 
 ```bash
-mkdir -p ~/osai/tools/{claude,arsenal,ligolo,AdaptixC2,custom} ~/osai/labs
+mkdir -p ~/osai/tools/{arsenal,ligolo,custom} ~/osai/labs
 # /osai-engage creates each lab's recon/ loot/ screenshots/ state/ www/ and the
 # ~/osai/current symlink. Nothing to pre-create per lab.
 ```
 Final shape:
 ```
 ~/osai/
-├── current -> labs/<active>     (set by /osai-engage)
-├── tools/   claude/ arsenal/ ligolo/ AdaptixC2/ custom/
+├── current -> labs/<active>     (set by /osai-engage; LOCAL disk)
+├── notes/   Obsidian vault on the Windows hgfs share (see §7) — .vault-ok marker
+├── tools/   arsenal/ ligolo/ custom/
 └── labs/<labname>/  recon/ loot/ screenshots/ state/ www/
 ```
 
@@ -137,16 +140,37 @@ python3 -m venv ~/garak-venv
 
 ---
 
-## 7. Adaptix C2 + Ligolo
+## 7. Backends: HexStrike + Metasploit + Ligolo + Notes vault
 
+**HexStrike AI (enum/web engine) — install and firewall to loopback:**
 ```bash
-# Adaptix C2 server → ~/osai/tools/AdaptixC2/  (build per its README)
-# Adaptix MCP bridge → ~/osai/tools/claude/adaptix_mcp.py
-pip install websockets --break-system-packages   # needed by shell_terminal()
-
-# Ligolo-ng (preferred pivot) → ~/osai/tools/ligolo/
-#   proxy runs on Kali; agent binaries (win/linux) staged for targets
+sudo apt install -y hexstrike-ai        # or per its repo README
+hexstrike_server --port 8888 &          # binds 0.0.0.0 with NO auth + an execute_command RCE
+# MANDATORY firewall — loopback only, re-assert after every Ligolo tunnel:
+sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP
 ```
+
+**Metasploit (shell handler + durable state):**
+```bash
+msfdb init                              # Postgres-backed workspace store
+# msfmcpd ships with the framework; it is registered as the `metasploit` MCP (see §8).
+# One workspace per lab: `workspace -a <LAB>` (osai-engage does this).
+```
+
+**Ligolo-ng (preferred pivot)** → `~/osai/tools/ligolo/` — proxy runs on Kali; agent binaries
+(win/linux) are delivered THROUGH a Metasploit session (see /osai-pivot) — no separate C2 agent.
+
+**Notes vault — VMware Shared Folder → Obsidian:**
+```bash
+# In VMware: VM Settings → Options → Shared Folders → Always enabled; add host folder as "osai-notes".
+sudo mount -a                                   # hgfs mounts under /mnt/hgfs/osai-notes
+ln -sfn /mnt/hgfs/osai-notes ~/osai/notes       # NOTE: hgfs has no symlink support INSIDE it —
+                                                # that's why the engagement tree stays on local disk.
+test -f ~/osai/notes/.vault-ok || touch /mnt/hgfs/osai-notes/.vault-ok   # marker created on the HOST side
+```
+Open `~/osai/notes` (the host folder) as an Obsidian vault on Windows. Every skill checks
+`test -f ~/osai/notes/.vault-ok` before writing a note; if the share isn't mounted it STOPS
+rather than writing to local disk. The engagement tree `~/osai/current/` is never written here.
 
 ---
 
@@ -164,10 +188,13 @@ schemas load every turn):
 
 | Server | Role | Setup |
 |--------|------|-------|
-| **adaptix** | C2: async exec, socks5/ligolo tunnels, cred store | `~/osai/tools/claude/adaptix_mcp.py` |
+| **hexstrike** | 151-tool enum + web engine (JSON out) | `hexstrike_server --port 8888` running + firewalled (§7); `hexstrike_mcp --server http://127.0.0.1:8888` |
+| **metasploit** | Shell handler + durable state (msfdb) | `msfdb init`; `msfmcpd --user <u> --password <pw> --enable-dangerous-actions` |
 | **bloodhound** | READ-ONLY AD graph queries in English → feed /osai-ad-attack | clone `bloodhound_mcp`; run BloodHound CE; create API token; set env in .mcp.json |
-| **pentestmcp** | Enum accelerator: netexec/bloodhound/john/certipy/nmap | clone `pentest-mcp-server` |
-| **garak** | LLM vuln scans (Ollama/OpenAI/HF/GGML) | `EdenYavin/Garak-MCP`, needs `uv` (`pipx install uv`) |
+
+> **HARD RULE:** all payloads + sessions go through the `metasploit` MCP. HexStrike ships
+> `metasploit_run`/`msfvenom_generate` — never use them (one-shot, no session persistence).
+> AI scans: use the garak CLI (`~/garak-venv/bin/garak`, §6) — no MCP needed.
 
 **Optional, AD-phase-only:** **AdStrike** (53 AD tools, heavy + autonomous). Add to
 `mcpServers` only while working AD, then remove — 53 schemas is a large per-turn token
@@ -184,7 +211,11 @@ was RCE). Review each server's code, pin versions, run on the Kali VM only.
 
 ```bash
 claude --version
-ls ~/.claude/CLAUDE.md && ls ~/.claude/commands/osai-*.md | wc -l   # 27
+ls ~/.claude/CLAUDE.md && ls ~/.claude/commands/osai-*.md | wc -l   # 25
+test -f ~/osai/notes/.vault-ok && echo "vault OK" || echo "[!] notes vault not mounted"
+curl -s -m3 http://127.0.0.1:8888/health >/dev/null && echo "HexStrike up (loopback)"
+sudo iptables -C INPUT -p tcp --dport 8888 ! -i lo -j DROP && echo "8888 firewalled"
+msfdb status | tail -1
 ls ~/repos/{hacktricks,payloadsallthethings,InternalAllTheThings,seclists,awesome-pentest,OSAI} -d
 ~/garak-venv/bin/garak --version
 nxc --version && certipy version && bloodhound-python --help >/dev/null && echo "AD tools ok"
@@ -199,15 +230,15 @@ In a `claude` session launched from a lab dir:
 ## 10. Per-engagement flow (recap)
 
 ```
-/osai-engage → /osai-parallel-recon → per host: /osai-ai-hunter|/osai-web|/osai-win-enum
+/osai-engage → HexStrike enum → per host: /osai-ai-hunter (+/osai-owasp) | /osai-win-enum
   → find attack path → get RAW shell first (/osai-revshell / exploit)
-  → THEN Adaptix agent → persistence → (new subnet?) Ligolo THROUGH Adaptix (/osai-pivot)
+  → THEN Metasploit session → persistence → (new subnet?) Ligolo THROUGH the session (/osai-pivot)
   → /osai-notes + /osai-cred-vault as you go → /osai-spray → re-recon → repeat
 When context gets heavy: /clear then /osai-plan (rehydrates from state files)
 ~2h left: /osai-report   ·   after lab: /osai-retro
 ```
-C2 + pivot are POST-foothold. Adaptix listener + Ligolo proxy stand up when a foothold is
-imminent, NOT at engage. Claude may attempt agent/persistence/tunnel via the Adaptix MCP; if
-it fails, do it manually. See CLAUDE.md "Foothold sequence".
+C2 + pivot are POST-foothold. The Metasploit handler + Ligolo proxy stand up when a foothold is
+imminent, NOT at engage. Claude may attempt session/persistence/tunnel via the `metasploit` MCP;
+if it fails, do it manually. See CLAUDE.md "Foothold sequence".
 Full detail any time: `/osai-help`. Reasoning framework + MCP rules live in
 `~/.claude/CLAUDE.md`.

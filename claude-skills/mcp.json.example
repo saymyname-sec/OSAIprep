@@ -1,16 +1,24 @@
 {
-  "_comment": "OSAI recommended MCP set. Copy to your project root as .mcp.json on Kali and edit paths/tokens. Keep this set LEAN — every server's tool schemas load each turn. See /osai-help mcp for setup. JSON has no comments, so _comment keys are ignored by the client.",
+  "_comment": "OSAI architecture-v2 MCP set. Copy to your project root as .mcp.json on Kali and edit paths/creds. Keep this set LEAN — every server's tool schemas load each turn. See /osai-help mcp for setup. JSON has no comments, so _comment/_role/_setup keys are ignored by the client.",
 
   "mcpServers": {
 
-    "adaptix": {
-      "_role": "C2 — async execute_command, socks5/ligolo tunnels, credential store",
-      "command": "python3",
-      "args": ["/home/kapi/osai/tools/claude/adaptix_mcp.py"]
+    "hexstrike": {
+      "_role": "151-tool enumeration + web engine (nmap/rustscan, nuclei/ffuf/feroxbuster/katana/dalfox/sqlmap/arjun, AD ENUM only: netexec/responder/rpcclient/enum4linux-ng/smbmap). Returns structured JSON — read fields directly, no /osai-triage. Does NOT do post-exploitation, AD exploitation, or AI tooling — those stay skills.",
+      "_setup": "hexstrike_server MUST be running AND firewalled to loopback: `hexstrike_server --port 8888` then `sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP` (re-check after every Ligolo tunnel — the server has NO auth and an execute_command RCE).",
+      "command": "hexstrike_mcp",
+      "args": ["--server", "http://127.0.0.1:8888", "--timeout", "300"]
+    },
+
+    "metasploit": {
+      "_role": "THE shell handler + durable engagement state (msfdb). 16 tools, read-only by default; --enable-dangerous-actions unlocks module execution + session write. All payload generation and all session work go here — never HexStrike's metasploit_run/msfvenom_generate (no session persistence). One workspace per lab.",
+      "_setup": "msfdb init; then this stdio server. Replace <user>/<pw> with your msf RPC creds.",
+      "command": "msfmcpd",
+      "args": ["--user", "<EDIT_MSF_USER>", "--password", "<EDIT_MSF_PW>", "--enable-dangerous-actions"]
     },
 
     "bloodhound": {
-      "_role": "READ-ONLY AD graph queries in natural language. Feed answers to /osai-ad-attack.",
+      "_role": "READ-ONLY AD graph queries in natural language → feed /osai-ad-attack. HexStrike has no BloodHound.",
       "_setup": "clone bloodhound_mcp; run BloodHound CE; create an API token in BH settings",
       "command": "python3",
       "args": ["/home/kapi/tools/bloodhound_mcp/bloodhound_mcp.py"],
@@ -19,26 +27,12 @@
         "BLOODHOUND_TOKEN_ID": "<EDIT_TOKEN_ID>",
         "BLOODHOUND_TOKEN_KEY": "<EDIT_TOKEN_KEY>"
       }
-    },
-
-    "pentestmcp": {
-      "_role": "Lean enumeration accelerator: netexec, bloodhound, john, certipy, nmap. Enum only; keep exploitation manual.",
-      "_setup": "clone the pentest-mcp-server repo; adjust path below",
-      "command": "python3",
-      "args": ["/home/kapi/tools/pentest-mcp-server/server.py"]
-    },
-
-    "garak": {
-      "_role": "LLM vuln scans (Ollama/OpenAI/HF/GGML): discover model -> probes -> scan -> report. Your automated AI-scan phase.",
-      "_setup": "clone EdenYavin/Garak-MCP; needs Python 3.11+ and uv",
-      "command": "uv",
-      "args": ["--directory", "/home/kapi/tools/Garak-MCP", "run", "garak-mcp"]
     }
 
   },
 
   "_optional_AD_only": {
-    "_note": "AdStrike = 53 AD tools (netexec/impacket/certipy/kerbrute/bloodhound/powerview/rubeus). HEAVY (53 schemas load every turn) + autonomous. Add to mcpServers ONLY during the AD phase, then remove. Enum-drive it; keep exploitation controlled.",
+    "_note": "AdStrike = 53 AD tools (impacket/certipy/kerbrute/powerview/rubeus etc.). HEAVY (53 schemas load every turn). Add to mcpServers ONLY during the AD phase, then remove. Enum-drive it; keep exploitation via the metasploit MCP.",
     "adstrike": {
       "command": "/home/kapi/tools/AdStrike/venv/bin/python3",
       "args": ["/home/kapi/tools/AdStrike/mcp_server.py"]

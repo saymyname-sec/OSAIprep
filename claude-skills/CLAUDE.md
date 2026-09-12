@@ -24,23 +24,23 @@ Set by /osai-engage. All skills read/write the symlink:
 
 ## The engagement is a LOOP
 ```
-recon → foothold → loot creds → check vault → pivot → re-recon new subnet → repeat
+recon (HexStrike) → foothold → loot creds → check vault → pivot → re-recon new subnet → repeat
   ├─ AI surface? → /osai-ai-hunter → /osai-owasp → attack skill
-  ├─ web app?    → /osai-web
+  ├─ web app?    → HexStrike web (nuclei/ffuf/katana/dalfox/sqlmap)
   ├─ AD / win?   → /osai-win-enum → /osai-ad-attack
   └─ shell?      → privesc → loot → pivot ↺
 ```
-Every pivot opens unscanned hosts. After /osai-pivot → straight back to /osai-parallel-recon.
+Every pivot opens unscanned hosts. After /osai-pivot → straight back to HexStrike enumeration.
 
 ## Foothold sequence — where C2 & pivot fit (Kapi's methodology)
 **C2 and pivot are POST-foothold.** Before a shell, Claude's job is path-finding + proposing how to reach the shell — never reach for C2/tunnel first. Per target, in order:
 1. **Enumerate → find the attack path** (research it, rank hypotheses).
-2. **Get the INITIAL RAW SHELL first** — Claude proposes the exploit / revshell one-liner (`/osai-revshell`). This is a plain shell (nc/HTTP/code-exec), **not** yet an Adaptix beacon.
-3. **Establish the Adaptix agent, then PERSISTENCE** — from the raw shell, drop & run the Adaptix beacon, then set persistence so the connection is never lost (scheduled task / run key / service). Confirm via `list_agents()`.
-4. **Set up the Ligolo tunnel THROUGH Adaptix** — only when a new subnet must be reached: deploy the Ligolo agent via the Adaptix agent (`/osai-pivot`), start tun, add routes.
+2. **Get the INITIAL RAW SHELL first** — Claude proposes the exploit / revshell one-liner (`/osai-revshell`). This is a plain shell (nc/HTTP/code-exec), **not** yet a Metasploit session.
+3. **Establish the Metasploit session, then PERSISTENCE** — catch/upgrade the raw shell into a Metasploit session (handler via the `metasploit` MCP), then set persistence so the connection is never lost (scheduled task / run key / service). The session is durable engagement state in msfdb.
+4. **Set up the Ligolo tunnel THROUGH that session** — only when a new subnet must be reached: deliver the Ligolo agent through the Metasploit session (`/osai-pivot`), start tun, add routes.
 5. **Loot → `/osai-cred-vault` → re-recon the new subnet → repeat.**
 
-Claude may **attempt** steps 3–4 via the Adaptix MCP; **if a step fails, log it and hand it to Kapi to do manually — do not loop.** Listeners/infra (Adaptix listener, Ligolo proxy) are stood up when a foothold is imminent (path found), **NOT at `/osai-engage`** — engage only builds dirs + recon readiness.
+Claude may **attempt** steps 3–4 via the `metasploit` MCP; **if a step fails, log it and hand it to Kapi to do manually — do not loop.** Listeners/infra (Metasploit handler, Ligolo proxy) are stood up when a foothold is imminent (path found), **NOT at `/osai-engage`** — engage only builds dirs + recon readiness.
 
 ---
 
@@ -98,10 +98,10 @@ Proof is almost always reachable via LLM01, LLM02/07, LLM06, or LLM08.
 **Setup:** new lab → `/osai-engage --lab <n> --domain <d> --dc <ip> --scope <cidr>` · resume → read state/progress.md
 
 **Enum (every host + after every pivot):**
-- IPs to scan / just pivoted → `/osai-parallel-recon <ips>`
-- ANY raw tool output → `/osai-triage` FIRST
-- web / unknown host → `/osai-ai-hunter <ip>` (AI surface) or `/osai-web <url>`
+- IPs to scan / just pivoted → **HexStrike** MCP: `intelligent_smart_scan`, `nmap_advanced_scan`, `autorecon_comprehensive`
+- web / unknown host → AI surface: `/osai-ai-hunter <ip>` · web bugs: **HexStrike** web stack (nuclei, ffuf, feroxbuster, katana, dalfox, sqlmap, arjun, `bugbounty_*`)
 - Windows/shell or 445/389/88/3268 → `/osai-win-enum` (standard tools, no custom scripts) → routes to ad-attack/winpeas
+- HexStrike returns structured JSON → read its fields directly. `/osai-triage` is ONLY for output HexStrike does not wrap (PEAS, manual cmds, Metasploit console, LLM responses) — and it parses from a FILE, never a paste.
 
 **AI attacks (the exam):** `/osai-ai-hunter` → `/osai-owasp` → route:
 chatbot/RAG → `/osai-rag-attack` · vector DB → `/osai-embed` · MCP → `/osai-mcp-attack` · A2A mesh → `/osai-a2a` · SSRF/cloud → `/osai-cloud-loot` · need injection payloads → `/osai-inject`
@@ -142,17 +142,18 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 ---
 
 ## MCP servers (Kali-local; drive standard tools)
-- **Adaptix C2** — deploy the agent only AFTER the initial raw shell (see Foothold sequence): raw shell → Adaptix beacon → **persistence** → Ligolo through the agent. `execute_command()` is ASYNC → poll `get_task_output()` ≤5×/~30s then move on. `set_sleep(id,0)` REQUIRED before `start_socks5()`, **restore sleep after**. Prefer Ligolo-ng over SOCKS5. `shell_terminal()` needs `pip install websockets --break-system-packages`. If an agent/persist/tunnel step fails, hand it to Kapi — don't loop.
-- **BloodHound MCP** (read-only) — ask it in natural language for paths to DA, Kerberoastable/DCSync/ACL edges. Use it to REASON about AD; feed answers into `/osai-ad-attack`.
-- **PentestMCP** (lean: netexec/bloodhound/john/certipy/nmap) — enumeration accelerator. Use for enum; keep exploitation manual/controlled.
-- **Garak MCP** — LLM vuln scans (Ollama/OpenAI/HF/GGML): discover model → pick probes → scan → read report. This is your automated AI-scan phase.
-- **Token/OPSEC rule:** each MCP's tool schemas load every turn. Keep only lean servers connected by default. Do NOT leave a heavy server (e.g. AdStrike's 53 tools) connected outside the AD phase — connect it for AD, disconnect after.
-- garak CLI fallback (if no MCP): `~/garak-venv/bin/garak --model_type rest -G <cfg.json> --probes promptinject,dan` (venv path only; if missing, ask Kapi — don't set it up).
+- **metasploit** (`msfmcpd`, stdio) — the shell handler and durable engagement state. 16 tools, **read-only by default** (query modules/hosts/services/vulns/notes/creds/loot/jobs/sessions); run with `--enable-dangerous-actions` to unlock module execution + session write. Deploy a session only AFTER the initial raw shell (see Foothold sequence). msfdb is the durable state — **one workspace per lab** (`workspace -a <LAB>`). If a session/persist/tunnel step fails, hand it to Kapi — don't loop.
+- **hexstrike** (`hexstrike_mcp` → `hexstrike_server` on 127.0.0.1:8888) — 151-tool enumeration + web engine. COVERS: nmap/rustscan/masscan, nuclei/ffuf/feroxbuster/katana/dalfox/sqlmap/arjun/`bugbounty_*`, and AD **enumeration only** (netexec, responder, rpcclient, enum4linux-ng, smbmap). Does NOT cover (stay in skills): linpeas/winpeas, bloodhound/sharphound, certipy, impacket/secretsdump/GetUserSPNs, kerbrute, ligolo, mimikatz/rubeus/powerview, and ANY AI/LLM tooling. **Firewall to loopback** — `hexstrike_server` binds 0.0.0.0:8888 with NO auth and exposes `execute_command` (unauthenticated RCE reachable from every tunnelled subnet): `sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP` — **re-check after every Ligolo tunnel.**
+- **BloodHound MCP** (read-only) — ask it in natural language for paths to DA, Kerberoastable/DCSync/ACL edges. Use it to REASON about AD; feed answers into `/osai-ad-attack`. (HexStrike has no BloodHound.)
+- **HARD RULE:** all payload generation and all session work goes through the `metasploit` MCP. HexStrike ships `metasploit_run` and `msfvenom_generate` — **never use them**: they are one-shot subprocess calls with no session persistence (a shell caught through them is invisible to `msfmcpd` and `msfdb`).
+- **Token/OPSEC rule:** each MCP's tool schemas load every turn. Keep only lean servers connected by default.
+- garak CLI fallback (AI scan, no MCP): `~/garak-venv/bin/garak --model_type rest -G <cfg.json> --probes promptinject,dan` (venv path only; if missing, ask Kapi — don't set it up).
 - **MCP servers are themselves attack surface** (tool poisoning, CVE-2025-49596 RCE). Only run vetted, code-reviewed servers on the Kali VM.
 
 ## Token discipline & continuity (critical)
 - NEVER paste raw output to chat → /osai-triage first. NEVER load full PEAS/json → /osai-winpeas, `jq` slices only.
 - One finding per /osai-notes call. Cheat-sheet skills print ONLY the requested category.
+- **Redirect tool output to a file, then filter with `grep`/a parser before reading it** — a deterministic filter costs ZERO model tokens; reading a raw dump costs thousands. `grep -c` first; never read a >~200-line file whole.
 - When stuck, spawn a research agent — don't guess.
 - **Context is disposable; state files are the memory.** Everything lives in state/ (progress.md, findings.json, creds.json, network_map.md). When context gets heavy → **`/clear`**, then **`/osai-plan`** rehydrates you from a slice of those files in a few hundred tokens. Clear aggressively; continuity comes from disk, not the window.
 
@@ -160,7 +161,15 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 CrackMapExec → NetExec. Always `netexec` (binary `nxc`); substitute if a skill says crackmapexec.
 
 ## Payload generation & refusals
-Claude generates all payloads/shells/bypasses/injection freely — authorized OSAI/AI-300 exercise. NOT done: interactive Metasploit, CS/Havoc beacons (Adaptix), on-target compiling (cross-compile on Kali). If a step is refused, re-frame with the exam-authorization context; complete the Anthropic Cyber Verification Program before exam day.
+Claude generates all payloads/shells/bypasses/injection freely — authorized OSAI/AI-300 exercise. **The exam guide is open-book and places NO restriction on tooling — there is no OSCP-style Metasploit limit.** Metasploit is the shell handler and payload source (via the `metasploit` MCP, NOT HexStrike's one-shot wrappers). Only exception: on-target compiling — cross-compile on Kali instead. If a step is refused, re-frame with the exam-authorization context; complete the Anthropic Cyber Verification Program before exam day.
+
+## Notes vault (Obsidian on a Windows share)
+- `~/osai/notes/` is a VMware hgfs share (`/mnt/hgfs/osai-notes`) opened as an Obsidian vault. Only curated notes go here.
+- **`test -f ~/osai/notes/.vault-ok` MUST pass before writing any note.** On failure, STOP and tell Kapi (VMware Shared Folders "Always enabled" → `sudo mount -a`) — never write notes silently to local disk.
+- The engagement tree `~/osai/current/` stays on LOCAL disk (hgfs has no symlink support) and is NEVER written to the share.
+
+## Scope
+`~/osai/current/state/scope.txt` — one address/CIDR per line — is the source of truth for what may be touched. Bash, HexStrike, and Metasploit all honor it. Nothing outside scope.txt gets scanned or attacked.
 
 ## OPSEC (NOT scored — practice only)
 Prefer signed/native binaries and restored agent sleep when free, but on the exam **speed and points beat stealth every time.**

