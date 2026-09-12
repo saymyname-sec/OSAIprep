@@ -19,7 +19,7 @@
 | `PAYLOAD_LIBRARY.md` | Malicious code: pandas.py hijack, RAG poison templates, etc. |
 | `TOOL_REFERENCE.md` | Quick reference for every tool used across the course |
 | `GLOSSARY.md` | Master glossary across all modules |
-| `claude-skills/` | Claude Code CLI skill files + installation bundle |
+| `claude-skills/` | CLI toolkit: `CLAUDE.md` (engagement brain), 25 `osai-skills/`, `SETUP.md` (Kali prep), `MCP/` (HexStrike/Metasploit/Obsidian setup + cheatsheets), `mcp.json.example` |
 
 ---
 
@@ -73,8 +73,9 @@ Scoring:  75/100 to pass
   export ANTHROPIC_API_KEY=<your-key>
   claude --version
   ```
-- [ ] Install all 12 **osai-* skills** (see [Skills](#claude-code-cli-skills) below)
-- [ ] Configure **MCP servers** in `~/.claude.json` (see [MCP Servers](#mcp-servers) below)
+- [ ] Install all 25 **osai-* skills** (see [Skills](#claude-code-cli-skills) below); full machine prep in `claude-skills/SETUP.md`
+- [ ] Configure **MCP servers** (HexStrike + Metasploit + BloodHound) — see [MCP Servers](#mcp-servers) and `claude-skills/MCP/`
+- [ ] Mount the **Obsidian notes vault** (Windows↔Kali share + `.vault-ok`) — see `claude-skills/MCP/MCP_INSTRUCTIONS.md`
 - [ ] Install and test **Burp Suite MCP** extension — critical for web/chatbot interception
 - [ ] Set up **SysReptor** locally and create one finding template per category
 - [ ] Pre-build **arsenal directory** (see [Arsenal](#arsenal) below)
@@ -86,35 +87,32 @@ Scoring:  75/100 to pass
 # 1. Launch Claude Code CLI
 claude
 
-# 2. Initialize engagement (creates ~/osai/ tree, verifies arsenal)
-/osai-engage --domain <DOMAIN> --dc <DC_IP> --scope <CIDR1,CIDR2>
+# 2. Initialize engagement (vault gate, ~/osai/ tree, scope.txt, backend checks)
+/osai-engage --lab exam --domain <DOMAIN> --dc <DC_IP> --scope <CIDR1,CIDR2>
 
-# 3. Start Ligolo relay in tmux
-tmux new-window -n ligolo
-sudo ligolo-proxy -selfcert -laddr 0.0.0.0:11601
-
+# 3. Confirm backends (engage verifies; it does NOT stand up listeners):
+#    HexStrike up + firewalled to loopback (8888), msfdb up, .vault-ok present
 # 4. Start HTTP payload server in tmux
-tmux new-window -n http
-python3 -m http.server 8000 --directory ~/osai/www/
+tmux new-window -n http; python3 -m http.server 8000 --directory ~/osai/current/www/
 
-# 5. Start Burp Suite and enable MCP server (port 9876)
-
-# 6. Initial sweep of all provided IPs (HexStrike MCP)
+# 5. Initial sweep of all provided IPs (HexStrike MCP)
 #    intelligent_smart_scan / nmap_advanced_scan / autorecon_comprehensive over scope.txt
+# (Ligolo relay + Metasploit handler come LATER — only when a foothold is imminent.)
 ```
 
 ### Every new host
 
 ```
-1. AI surface?        →  /osai-ai-hunter <target>
-2. Port triage        →  /osai-triage [nmap output]
-3. Foothold
-4. Post-exploit       →  run winPEAS/linPEAS → /osai-winpeas <file>
-5. Active Directory?  →  /osai-ad-attack
-6. Creds found        →  /osai-cred-vault add <creds>
-7. New subnet         →  /osai-pivot --subnet <CIDR>
-8. Machine done       →  /osai-notes --host <IP> --title <X> --severity <Y>
-                         → paste output to SysReptor → screenshot
+1. AI surface?        →  /osai-ai-hunter <target>  →  /osai-owasp (walk LLM01–08)
+2. Recon              →  HexStrike (JSON, read fields) ; /osai-triage only for non-HexStrike output
+3. Find path → RAW shell first (/osai-revshell / exploit)
+4. Stabilise          →  catch/upgrade into a Metasploit session (metasploit MCP) → persistence
+5. Post-exploit       →  winPEAS/linPEAS → /osai-winpeas ; Windows → /osai-win-enum
+6. Active Directory?  →  /osai-ad-attack ; coercion/relay → /osai-relay
+7. Creds found        →  /osai-cred-vault add <creds>  (→ creds.json + msfdb + Obsidian)
+8. New subnet         →  /osai-pivot  (Ligolo through the session)  → re-recon
+9. Machine done       →  /osai-notes --host <IP> ...  (→ findings.json + Obsidian vault)
+                         → screenshot proof → /osai-notes --flag
 ```
 
 ### Credential rule (non-negotiable)
@@ -133,8 +131,9 @@ Before giving up on a host → check the vault — you probably already have the
 
 ## Claude Code CLI Skills
 
-12 custom slash commands that live in `~/.claude/commands/` on Kali.
+25 custom slash commands that live in `~/.claude/commands/` on Kali.
 Each command is a markdown file Claude Code reads as instructions when you type `/osai-*`.
+Full machine prep: `claude-skills/SETUP.md`. In-session reference: `/osai-help`.
 
 ### Install
 
@@ -143,31 +142,29 @@ Each command is a markdown file Claude Code reads as instructions when you type 
 mkdir -p ~/.claude/commands
 tar -xzf claude-skills/osai-skills.tar.gz -C ~/.claude/commands/ --strip-components=1
 
-# 2. Verify — should show 12 files
-ls ~/.claude/commands/osai-*.md
+# 2. Verify — should show 25 files
+ls ~/.claude/commands/osai-*.md | wc -l
 
 # 3. Test in Claude Code CLI
 claude
-/osai-triage test
+/osai-help
 ```
 
-### Skills reference
+### Skills reference (25 — grouped)
 
-| Command | When to use |
-|---------|-------------|
-| `/osai-engage --domain D --dc IP --scope CIDR` | **First thing on exam day** — init ~/osai/ workspace |
-| `/osai-parallel-recon <IPs>` | Sweep all targets simultaneously |
-| `/osai-ai-hunter <target>` | Any host with web ports — find LLM/RAG surface |
-| `/osai-triage <output>` | Before reading any raw tool output |
-| `/osai-winpeas <file>` | After winPEAS or linPEAS — extracts privesc paths |
-| `/osai-ad-attack` | After foothold — enumerate and exploit AD |
-| `/osai-linux-attack` | Linux shell — map privesc (SUID/sudo/caps/cron) |
-| `/osai-pivot --subnet <CIDR>` | New subnet discovered — Ligolo route setup |
-| `/osai-cred-vault add <creds>` | Every time creds are found |
-| `/osai-cred-vault query <host>` | Before attacking any service |
-| `/osai-rag-attack <URL>` | Chatbot or RAG system found |
-| `/osai-notes --host IP --title X --severity Y --evidence Z` | After each finding |
-| `/osai-report --final` | Before starting the report write-up |
+| Group | Skills |
+|-------|--------|
+| **Lifecycle** | `engage` `notes` `cred-vault` `report` `retro` `triage` |
+| **Reasoning** | `plan` (Autonomy Contract) · `owasp` (LLM Top 10) · `chains` · `help` |
+| **Recon/enum** | `ai-hunter` · `win-enum` — network + web recon is the **HexStrike MCP**, not a skill |
+| **AI attacks** | `rag-attack` `embed` `mcp-attack` `a2a` `cloud-loot` `inject` |
+| **Traditional** | `ad-attack` `relay` `linux-attack` `winpeas` `hijack` `spray` `pivot` |
+| **Cheat sheets** | `bypass` `revshell` `upload` `transfer` |
+
+Key entry points: `/osai-engage` (start) · `/osai-ai-hunter`→`/osai-owasp` (AI, 75% of points) ·
+`/osai-cred-vault query <host>` (before attacking anything) · `/osai-plan` (re-orient after `/clear`) ·
+`/osai-notes --flag` (capture proof) · `/osai-report` (wrap-up).
+Archived (replaced by HexStrike): `osai-parallel-recon`, `osai-web` → `claude-skills/_archive/`.
 
 ### Update a skill
 
