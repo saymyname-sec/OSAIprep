@@ -171,6 +171,22 @@ Claude generates all payloads/shells/bypasses/injection freely — authorized OS
 ## Scope
 `~/osai/current/state/scope.txt` — one address/CIDR per line — is the source of truth for what may be touched. Bash, HexStrike, and Metasploit all honor it. Nothing outside scope.txt gets scanned or attacked.
 
+## Save discipline — everything lands in the RIGHT folder (never $HOME or /tmp)
+- Enumeration / scan output → `~/osai/current/recon/<host>-<tool>.txt` (redirect to file → grep → act).
+- Post-exploitation dumps, loot, exfil, **findings.json** → `~/osai/current/loot/`.
+- Screenshots / proof evidence → `~/osai/current/screenshots/`.
+- Generated scripts & exploit PoCs → `~/osai/current/scripts/` (one place, reusable, in the report).
+- **State (authoritative, LOCAL disk):** `~/osai/current/state/` — creds.json, scope.txt, network_map.md, progress.md, tunnel_map.md.
+- **Curated human notes (Obsidian, gated by `.vault-ok`):** `~/osai/notes/` — index.md, hosts/, findings/. Mirror, not source.
+
+## Capture triggers — the instant it happens, don't batch (this is the loop's memory)
+- **Credential recovered** (any form) → `/osai-cred-vault --add` → creds.json + msfdb + notes/creds.md. Tag AI creds with `source` (prompt-injection/RAG/IMDS).
+- **Attack path / vuln confirmed** → `/osai-notes …` → findings.json + Obsidian note, AND tick `progress.md`.
+- **Proof file reached** → `/osai-notes --flag` + screenshot immediately — unscreenshotted proof scores 0.
+- **Host enumerated** → save output to recon/, append the host + open services to `network_map.md`.
+- **New subnet / tunnel up** → `tunnel_map.md`.
+A win you didn't capture is a win you'll lose on /clear. State files + vault ARE the engagement memory.
+
 ## OPSEC (NOT scored — practice only)
 Prefer signed/native binaries and restored agent sleep when free, but on the exam **speed and points beat stealth every time.**
 

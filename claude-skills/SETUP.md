@@ -86,7 +86,7 @@ Final shape:
 ├── current -> labs/<active>     (set by /osai-engage; LOCAL disk)
 ├── notes/   Obsidian vault on the Windows hgfs share (see §7) — .vault-ok marker
 ├── tools/   arsenal/ ligolo/ custom/
-└── labs/<labname>/  recon/ loot/ screenshots/ state/ www/
+└── labs/<labname>/  recon/ loot/ scripts/ screenshots/ state/ www/
 ```
 
 ---

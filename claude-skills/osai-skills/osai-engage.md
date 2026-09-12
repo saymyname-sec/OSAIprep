@@ -17,8 +17,26 @@ silently land on local disk. Do not proceed past this step until it passes.
 LAB=<LAB from $ARGUMENTS>
 LAB_DIR=~/osai/labs/$LAB
 
-mkdir -p $LAB_DIR/{recon,loot,screenshots,state,www}
+mkdir -p $LAB_DIR/{recon,loot,screenshots,state,www,scripts}
 mkdir -p ~/osai/tools/arsenal/{payloads/ligolo,wordlists}
+
+# Obsidian vault skeleton (Step 0 already proved .vault-ok) — hosts/ findings/ + a live index
+mkdir -p ~/osai/notes/{hosts,findings}
+[ -f ~/osai/notes/index.md ] || cat > ~/osai/notes/index.md << 'IDX'
+# OSAI Engagement
+## Scoreboard
+```dataview
+TABLE host, severity, mitre, owasp, screenshot FROM #finding SORT severity ASC
+```
+## Proofs (scored)
+```dataview
+TABLE host, flag_path, screenshot FROM #proof
+```
+## Hosts
+```dataview
+TABLE role, status, points FROM #host SORT points DESC
+```
+IDX
 
 echo '[]' > $LAB_DIR/loot/findings.json
 echo '[]' > $LAB_DIR/state/creds.json

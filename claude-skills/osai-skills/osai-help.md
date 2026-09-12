@@ -67,12 +67,13 @@ Stuck on a host?
 ~/osai/
 ├── current -> labs/<active>     symlink all skills use
 ├── tools/  arsenal/(winpeas,linpeas,SharpHound,Rubeus,PowerUp) ligolo/ custom/   (C2 = Metasploit/msfdb; enum = HexStrike)
-├── notes/   Obsidian vault on the hgfs share (.vault-ok marker) — curated notes only
+├── notes/   Obsidian vault on the hgfs share (.vault-ok) — index.md, hosts/, findings/ (curated mirror)
 ├── labs/<labname>/
-│   ├── recon/       nmap, gobuster, ldap output
-│   ├── loot/        findings.json, flags, exports
-│   ├── screenshots/ flameshot captures
-│   ├── state/       scope.md, creds.json, network_map.md, progress.md
+│   ├── recon/       scan output → <host>-<tool>.txt
+│   ├── loot/        findings.json (authoritative), flags, exports
+│   ├── scripts/     generated exploit PoCs / enum scripts
+│   ├── screenshots/ flameshot captures (proof evidence)
+│   ├── state/       scope.txt, creds.json, network_map.md, progress.md, tunnel_map.md
 │   └── www/         HTTP payload server root
 └── repos/  hacktricks/ payloadsallthethings/ InternalAllTheThings/ OSAI/ seclists/ awesome-pentest/
 ```
