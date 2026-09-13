@@ -43,6 +43,123 @@ msfconsole -q -r handler.rc
 Edit `handler.rc` to match the LHOST / LPORT / PAYLOAD you built.
 `reverse_https` on 443/8443 typically survives egress filtering better than `reverse_tcp`.
 
+The bundled `handler.rc` sets session-survival globals (10-min comm timeout,
+1-hr retry budget) and uses `InitialAutoRunScript` to migrate into an existing
+`explorer.exe` — safer than spawning a new process with a spoofed PPID, which
+races the session and gets torn down.
+
+## Wiring Claude CLI to msfconsole via MCP (msgrpc + msfmcpd)
+
+Optional but strongly recommended for OSAI lab work: expose your msfconsole
+over MCP so Claude CLI can list sessions, run post modules, and drive the
+console for you (via tools like `msf_session_list`, `msf_session_exec`, etc.).
+
+The bridge is a two-hop chain:
+
+```
+Claude CLI  --stdio-->  msfmcpd  --JSON-RPC-->  msgrpc plugin  -->  msfconsole
+```
+
+`msgrpc` must be loaded *inside your active msfconsole* (not a standalone
+`msfrpcd`, which would spin up a separate framework with no sessions in it).
+
+### One-time setup
+
+**1. Install `msfmcpd`** (the MCP <-> msgrpc bridge). If not already present:
+
+```
+pipx install msfmcpd    # or: pip install --user msfmcpd
+which msfmcpd           # confirm it's on PATH
+```
+
+**2. Auto-load `msgrpc` on every msfconsole start.** Create/edit
+`~/.msf4/msfconsole.rc`:
+
+```
+load msgrpc ServerHost=127.0.0.1 ServerPort=55553 User=kapi Pass=PASSWORD SSL=false
+setg ExitOnSession false
+setg SessionCommunicationTimeout 600
+setg SessionExpirationTimeout 604800
+setg SessionRetryTotal 3600
+setg SessionRetryWait 10
+```
+
+Change `User=` / `Pass=` to whatever you set in the MCP entry below — they must
+match. `PASSWORD` is a placeholder; pick a real password.
+
+**3. Add the MCP server to `~/.claude.json`** under `mcpServers`:
+
+```json
+"msf": {
+  "command": "msfmcpd",
+  "args": ["--no-auto-start-rpc"],
+  "env": {
+    "MSF_RPC_HOST": "127.0.0.1",
+    "MSF_RPC_PORT": "55553",
+    "MSF_RPC_USER": "kapi",
+    "MSF_RPC_PASS": "PASSWORD",
+    "MSF_RPC_SSL":  "false"
+  }
+}
+```
+
+`--no-auto-start-rpc` tells `msfmcpd` not to spawn its own `msfrpcd` — it must
+connect to the msgrpc your msfconsole already exposes, otherwise it lands in
+the wrong framework instance.
+
+### Running order — every engagement
+
+Order matters. If `msfmcpd` starts before msgrpc is listening, the MCP server
+dies on connect.
+
+**1. Start msfconsole inside tmux** so it survives terminal drops and Claude
+CLI restarts (the biggest source of "PID changed → sessions gone" pain):
+
+```
+tmux new -s msf
+msfconsole -q
+```
+
+`~/.msf4/msfconsole.rc` fires, msgrpc loads on `127.0.0.1:55553`. Detach with
+`Ctrl-B` `D`, reattach any time with `tmux attach -t msf`.
+
+**2. Load your handler on top** (from the msfconsole prompt):
+
+```
+resource /home/kapi/osai/current/scripts/handler.rc
+```
+
+**3. Sanity-check msgrpc is up** from another terminal before starting Claude:
+
+```
+ss -tlnp | grep 55553              # ruby (msfconsole) listening on :55553
+curl -s -X POST http://127.0.0.1:55553/api/    # 401/method error = up, that's fine
+```
+
+**4. Start (or restart) Claude CLI.** `msfmcpd` spawns via stdio, connects to
+msgrpc, and Claude can now call `msf_session_list` etc. to see whatever
+sessions your msfconsole holds.
+
+### Verifying the wiring in Claude CLI
+
+Ask Claude to list sessions — it should call `msf_session_list` and return
+the same rows you see from `sessions -l` in the tmux console. If it comes back
+empty while `sessions -l` shows a session, the MCP is talking to the wrong
+framework — recheck that `--no-auto-start-rpc` is set and the credentials
+match `~/.msf4/msfconsole.rc`.
+
+### Gotchas
+
+- **Sessions die with the msfconsole PID they were caught in.** If msfconsole
+  restarts, every Meterpreter it holds is dead. This is why tmux matters.
+- **Never run `msfrpcd` and expect to see msfconsole's sessions.** `msfrpcd`
+  is a separate framework instance. Only the in-console `load msgrpc` shares
+  the sessions you actually have.
+- **Rotate the msgrpc password** between engagements — it's on localhost, but
+  it's still a full framework RCE if leaked.
+- **If Claude's tool calls timeout**, restart Claude CLI *without* touching
+  msfconsole — that way sessions survive and only the bridge reconnects.
+
 ## Delivery to dot (pick what fits your foothold)
 
 - **SMB write** to a share you can reach, then execute via WMI/scheduled task.
