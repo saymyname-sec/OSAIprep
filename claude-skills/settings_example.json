@@ -1,0 +1,64 @@
+{
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "model": "claude-opus-4-7",
+  "mcpServers": {
+    "metasploit": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "cd /home/kapi/osai/metasploit-framework && bundle exec ./msfmcpd --enable-dangerous-actions"
+      ]
+    },
+    "adaptix": {
+      "command": "python3",
+      "args": [
+        "/home/kali/osai/tools/claude/adaptix_mcp.py"
+      ],
+      "env": {
+        "ADAPTIX_URL": "https://localhost:4321",
+        "ADAPTIX_ENDPOINT": "/endpoint",
+        "ADAPTIX_USER": "operator",
+        "ADAPTIX_PASS": "pass",
+        "ADAPTIX_VERIFY": "false"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/kapi/osai",
+        "/tmp"
+      ]
+    },
+    "burp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@portswigger/mcp-proxy"
+      ],
+      "env": {
+        "BURP_MCP_URL": "http://127.0.0.1:9876"
+      }
+    },
+    "hexstrike-ai": {
+      "command": "python3",
+      "args": [
+        "/home/kapi/osai/hexstrike-ai/hexstrike_mcp.py",
+        "--server",
+        "http://localhost:8888"
+      ],
+      "description": "HexStrike AI v6.0 - Advanced Cybersecurity Automation Platform",
+      "timeout": 300,
+      "disabled": false
+    },
+    "obsidian": {
+      "type": "http",
+      "url": "https://192.168.20.1:27124/mcp/",
+      "headers": {
+        "Authorization": "Bearer <API KEY>"
+      }
+    }
+  }
+}
