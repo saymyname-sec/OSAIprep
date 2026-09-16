@@ -10,7 +10,7 @@ Examples:
 
 ## Two stores, one command
 - **findings.json** (`~/osai/current/loot/`) — AUTHORITATIVE, local disk, always written. /osai-report and /osai-plan read this.
-- **Obsidian vault** (`~/osai/notes/`) — human view, mirror only, written ONLY if `test -f ~/osai/notes/.vault-ok` passes. If the vault is down, write JSON, warn once, continue — never block.
+- **Obsidian vault** — human view, mirror. **PREFER `mcp__obsidian__vault_*` (works regardless of hgfs mount).** The direct hgfs write to `~/osai/notes/*.md` is a fallback and gated by `test -f ~/osai/notes/.vault-ok`. If BOTH paths fail, write JSON, warn once, keep going — never block.
 
 ## Step 1: Parse input
 Extract host, title, severity; optional steps, cve, owasp, source, screenshot. If host/title/severity missing — ask, don't default.
@@ -128,18 +128,31 @@ If screenshot is pending:
 Table from findings.json: `ID  Severity  Host  Title  Screenshot`. Summary: `N findings — X pending screenshots, Y missing steps`.
 
 ## --flag (proof capture)
-`/osai-notes --flag --host <IP> --file <path>`
+`/osai-notes --flag --host <IP> --file <path> --screenshot <path>`
+
+**HARD GATE — screenshot is REQUIRED, not optional.** OSAI scoring: "unscreenshotted proof scores 0." If `--screenshot` is missing, do NOT append the flag to findings.json. Instead:
+```
+[BLOCKED] Flag capture requires a screenshot.
+  Capture one first:
+    ~/osai/bin/osai-screenshot.sh proof-<host> --cmd -- <the command that reads the proof>
+  The tool returns the Obsidian-relative path — pass that back as --screenshot.
+  Re-run: /osai-notes --flag --host <IP> --file <path> --screenshot <returned-path>
+```
+Only after `--screenshot` is provided AND the file exists locally OR in the vault (`Shadow Supply/screenshots/*.png`), proceed:
+
 1. `cat <path>` (e.g. C:\Users\Administrator\Desktop\proof.txt or /root/proof.txt).
 2. Append to findings.json:
 ```json
 { "id": "PROOF-<host>", "ts": "<ISO>", "host": "<host>", "title": "Proof: <path>",
   "severity": "Info", "type": "flag", "flag_value": "<contents>", "flag_path": "<path>",
-  "source": "<shell|prompt-injection|RAG|SSRF>", "screenshot": "pending", "sysreptor_exported": false }
+  "source": "<shell|prompt-injection|RAG|SSRF>", "screenshot": "<vault or local path>", "sysreptor_exported": false }
 ```
+(`screenshot` MUST be a real path — never "pending" for a --flag entry.)
 3. Vault (gated): write `~/osai/notes/findings/PROOF-<host>.md` with frontmatter `tags: [proof, "host/<host>"]` + the value and the retrieval method; add a **Proof** line to the host note.
-4. Screenshot reminder — proof needs it or it scores 0:
+4. The screenshot from the gate above IS the proof frame — verify it captures the required content:
    - shell: `whoami`+`hostname`+flag in one frame.
    - AI/no-shell: the exact request (prompt/curl) AND the response/exfil that returned it.
+   - If missing, re-capture with `~/osai/bin/osai-screenshot.sh` and update via `/osai-notes --update PROOF-<host> --screenshot <path>`.
 5. If host is the **DC** with DA proof:
 ```
 [★] DC OWNED — traditional side done. Stop enumerating Windows; redirect time to AI (15-pointers). Run /osai-report.

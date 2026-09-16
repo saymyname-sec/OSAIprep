@@ -1,0 +1,26 @@
+{
+  "_comment": "Merge the 'hooks' object into your ~/.claude/settings.json. Do NOT overwrite existing top-level keys (model, mcpServers, theme, etc.). Adjust the command paths if you place the scripts somewhere other than ~/osai/bin/.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/home/kali/osai/bin/heartbeat-init.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "/home/kali/osai/bin/heartbeat-tick.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/home/kali/osai/bin/pwn3d-detector.sh" }
+        ]
+      }
+    ]
+  }
+}

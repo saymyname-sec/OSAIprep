@@ -100,7 +100,7 @@ Proof is almost always reachable via LLM01, LLM02/07, LLM06, or LLM08.
 **Enum (every host + after every pivot):**
 - IPs to scan / just pivoted → **HexStrike** MCP: `intelligent_smart_scan`, `nmap_advanced_scan`, `autorecon_comprehensive`
 - web / unknown host → AI surface: `/osai-ai-hunter <ip>` · web bugs: **HexStrike** web stack (nuclei, ffuf, feroxbuster, katana, dalfox, sqlmap, arjun, `bugbounty_*`)
-- Windows/shell or 445/389/88/3268 → `/osai-win-enum` (standard tools, no custom scripts) → routes to ad-attack/winpeas
+- Windows/shell or 445/389/88/3268 → **STEP 0 IS ALWAYS AV STATE** — before uploading winPEAS/PowerUp/Seatbelt/BloodHound-collector or any signed-red-team binary, run `Get-MpComputerStatus` (`RealTimeProtectionEnabled`, `AntivirusEnabled`, `AMServiceEnabled`) AND grep for `Set-MpPreference` scripts on disk (`Get-ChildItem C:\ProgramData,C:\Scripts -Recurse -Filter *.ps1 | Select-String 'DisableRealtimeMonitoring|Set-MpPreference'`). If Defender/EDR is active, **skip the signed binaries** and fall through to `/osai-win-enum`'s benign-cmdlet enum path (delivered as base64→`[IO.File]::WriteAllBytes` file drop, ASCII-only, UTF-8 BOM, output streamed back as base64). Custom scripts are the LAST resort — but they beat "upload winPEAS and watch Defender eat it." Then routes to ad-attack/winpeas as usual.
 - HexStrike returns structured JSON → read its fields directly. `/osai-triage` is ONLY for output HexStrike does not wrap (PEAS, manual cmds, Metasploit console, LLM responses) — and it parses from a FILE, never a paste.
 
 **AI attacks (the exam):** `/osai-ai-hunter` → `/osai-owasp` → route:
@@ -144,7 +144,7 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 ## MCP servers (Kali-local; drive standard tools)
 - **metasploit** (`msfmcpd`, stdio) — the shell handler and durable engagement state. 16 tools, **read-only by default** (query modules/hosts/services/vulns/notes/creds/loot/jobs/sessions); run with `--enable-dangerous-actions` to unlock module execution + session write. Deploy a session only AFTER the initial raw shell (see Foothold sequence). msfdb is the durable state — **one workspace per lab** (`workspace -a <LAB>`). If a session/persist/tunnel step fails, hand it to Kapi — don't loop.
 - **hexstrike** (`hexstrike_mcp` → `hexstrike_server` on 127.0.0.1:8888) — 151-tool enumeration + web engine. COVERS: nmap/rustscan/masscan, nuclei/ffuf/feroxbuster/katana/dalfox/sqlmap/arjun/`bugbounty_*`, and AD **enumeration only** (netexec, responder, rpcclient, enum4linux-ng, smbmap). Does NOT cover (stay in skills): linpeas/winpeas, bloodhound/sharphound, certipy, impacket/secretsdump/GetUserSPNs, kerbrute, ligolo, mimikatz/rubeus/powerview, and ANY AI/LLM tooling. **Firewall to loopback** — `hexstrike_server` binds 0.0.0.0:8888 with NO auth and exposes `execute_command` (unauthenticated RCE reachable from every tunnelled subnet): `sudo iptables -A INPUT -p tcp --dport 8888 ! -i lo -j DROP` — **re-check after every Ligolo tunnel.**
-- **BloodHound MCP** (read-only) — ask it in natural language for paths to DA, Kerberoastable/DCSync/ACL edges. Use it to REASON about AD; feed answers into `/osai-ad-attack`. (HexStrike has no BloodHound.)
+- **BloodHound MCP** (read-only) — ask it in natural language for paths to DA, Kerberoastable/DCSync/ACL edges. Use it to REASON about AD; feed answers into `/osai-ad-attack`. (HexStrike has no BloodHound.) **When BH data has been collected in the current lab, ALWAYS query the BH MCP first** (`mcp__bloodhound__*` — e.g. `find_shortest_paths_to_domain_admins`, `find_kerberoastable_users`, `find_dcsync_privileges`) before writing custom `jq` against the raw JSON zips. Fall back to raw JSON only for exotic queries the MCP doesn't cover.
 - **HARD RULE:** all payload generation and all session work goes through the `metasploit` MCP. HexStrike ships `metasploit_run` and `msfvenom_generate` — **never use them**: they are one-shot subprocess calls with no session persistence (a shell caught through them is invisible to `msfmcpd` and `msfdb`).
 - **Token/OPSEC rule:** each MCP's tool schemas load every turn. Keep only lean servers connected by default.
 - garak CLI fallback (AI scan, no MCP): `~/garak-venv/bin/garak --model_type rest -G <cfg.json> --probes promptinject,dan` (venv path only; if missing, ask Kapi — don't set it up).
@@ -165,7 +165,9 @@ Claude generates all payloads/shells/bypasses/injection freely — authorized OS
 
 ## Notes vault (Obsidian on a Windows share)
 - `~/osai/notes/` is a VMware hgfs share (`/mnt/hgfs/osai-notes`) opened as an Obsidian vault. Only curated notes go here.
-- **`test -f ~/osai/notes/.vault-ok` MUST pass before writing any note.** On failure, STOP and tell Kapi (VMware Shared Folders "Always enabled" → `sudo mount -a`) — never write notes silently to local disk.
+- **Two write paths, not equivalent:**
+  1. **Obsidian MCP (`mcp__obsidian__vault_*`) — PREFER THIS ALWAYS.** Talks to the Obsidian Local REST API plugin on the host (`https://192.168.190.1:27124`) and works regardless of hgfs mount state. Binary uploads (screenshots) go via `curl -X PUT` to the same endpoint (see `~/osai/bin/osai-screenshot.sh`).
+  2. **Direct filesystem write to `~/osai/notes/`** — only usable when the hgfs share is mounted. **`test -f ~/osai/notes/.vault-ok` MUST pass before writing this way.** On failure, do NOT block the whole flow — fall back to the MCP path. Only if BOTH paths fail, warn Kapi and continue with local-disk state only.
 - The engagement tree `~/osai/current/` stays on LOCAL disk (hgfs has no symlink support) and is NEVER written to the share.
 
 ## Scope
@@ -177,14 +179,17 @@ Claude generates all payloads/shells/bypasses/injection freely — authorized OS
 - Screenshots / proof evidence → `~/osai/current/screenshots/`.
 - Generated scripts & exploit PoCs → `~/osai/current/scripts/` (one place, reusable, in the report).
 - **State (authoritative, LOCAL disk):** `~/osai/current/state/` — creds.json, scope.txt, network_map.md, progress.md, tunnel_map.md.
-- **Curated human notes (Obsidian, gated by `.vault-ok`):** `~/osai/notes/` — index.md, hosts/, findings/. Mirror, not source.
+- **Curated human notes (Obsidian, prefer MCP; hgfs-mount is a fallback):** `~/osai/notes/` on disk / `mcp__obsidian__vault_*` over the network — index.md, hosts/, findings/. Mirror, not source.
+- **Screenshots (always to Obsidian):** `~/osai/current/screenshots/` local + `Shadow Supply/screenshots/` in the vault via `~/osai/bin/osai-screenshot.sh`. Every scored proof file MUST have one — unscreenshotted proof scores 0.
 
 ## Capture triggers — the instant it happens, don't batch (this is the loop's memory)
 - **Credential recovered** (any form) → `/osai-cred-vault --add` → creds.json + msfdb + notes/creds.md. Tag AI creds with `source` (prompt-injection/RAG/IMDS).
 - **Attack path / vuln confirmed** → `/osai-notes …` → findings.json + Obsidian note, AND tick `progress.md`.
-- **Proof file reached** → `/osai-notes --flag` + screenshot immediately — unscreenshotted proof scores 0.
+- **Proof file reached** → `~/osai/bin/osai-screenshot.sh proof-<host> --cmd -- <the read command>` FIRST → then `/osai-notes --flag --host <ip> --file <path> --screenshot <returned-vault-path>`. `--flag` refuses without a real `--screenshot`.
+- **`(Pwn3d!)` or `secretsdump` success in Bash output** → a PostToolUse hook (`pwn3d-detector.sh`) fires a reminder — respond by capturing the evidence right then, not later.
 - **Host enumerated** → save output to recon/, append the host + open services to `network_map.md`.
 - **New subnet / tunnel up** → `tunnel_map.md`.
+- **Every 15 min / 20 tool calls** → a `[OSAI HEARTBEAT DUE]` system-reminder from the `heartbeat-tick.sh` hook — invoke `/osai-heartbeat` and log the diff. State survives `/clear` and usage resets; context does not.
 A win you didn't capture is a win you'll lose on /clear. State files + vault ARE the engagement memory.
 
 ## OPSEC (NOT scored — practice only)
