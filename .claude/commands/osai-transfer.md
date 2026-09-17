@@ -6,7 +6,7 @@ Categories: ligolo, chisel, ssh, dns, icmp, cloud, socat, netsh, meterpreter, pr
 $ARGUMENTS = optional category filter. If empty, list all categories with one-line description and ask which one.
 
 # Purpose
-Tunneling, file transfer, and exfiltration cheat sheet for OSAI exam. Copy-paste ready.
+Tunneling, file transfer, and exfiltration cheat sheet for engagement. Copy-paste ready.
 
 # Steps
 

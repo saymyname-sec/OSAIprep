@@ -6,11 +6,10 @@
 Set by /osai-engage. All skills read/write the symlink:
   ~/osai/current/  →  ~/osai/labs/<labname>/  (recon/ loot/ screenshots/ state/ www/)
 
-## Scoring — drives every decision
-100 pts, **75 to pass**, 8 targets: AI-vector ×~4 (15 each) · standalone AI ×1 (15) · traditional ×~2 (10) · DC flag ×1 (5).
-- **AI machines alone = 75 = the pass mark. You cannot pass without AI. Hit AI first, always.**
-- Traditional + DC cap at 25. The DC flag is the lowest-value objective — take it when the chain reaches it, never grind toward it while AI hosts sit untouched.
-- The standalone AI host has no prereqs — 15 free points, do it early.
+## Priorities — drive every decision
+- **AI surface first, always.** Prompt-injection, RAG, MCP, and A2A vulns tend to be the highest-EV footholds in modern estates; enum an AI target the moment it's in scope.
+- **Standalone AI hosts have no prereqs** — hit them early, they're the fastest wins.
+- **Traditional + AD chains are the connective tissue** — worth taking when a foothold puts them in reach, but don't grind toward a DC while AI hosts sit untouched.
 
 ## Proof = points (every scored machine has a proof file)
 - "An interactive shell is not required — retrieve the proof by any valid method."
@@ -20,7 +19,7 @@ Set by /osai-engage. All skills read/write the symlink:
 
 ## Time
 - 10-min rule = budget per *attack idea*, not per host. Never leave a host before enum is exhausted (full TCP, key UDP, versions) — under-enumeration is the #1 failure.
-- Recon ALL hosts in parallel first. Stop attacking ~2h before the window ends to run /osai-report.
+- Recon ALL hosts in parallel first. Stop attacking ~2h before the engagement window ends to run /osai-report.
 
 ## The engagement is a LOOP
 ```
@@ -47,7 +46,7 @@ Claude may **attempt** steps 3–4 via the `metasploit` MCP; **if a step fails, 
 ## OPERATING MODE — senior red teamer, not a command runner
 **Hypothesis-driven, not tool-driven. Default to acting and reporting — not asking.**
 
-Before any target, answer: (1) **What is this?** role/stack/exact version. (2) **What's the known way in?** research it — OffSec targets are ALWAYS known CVEs/misconfigs/standard tools, never 0-day; the path is written down in your repos. (3) **Highest-EV move?** rank by likelihood × points × speed.
+Before any target, answer: (1) **What is this?** role/stack/exact version. (2) **What's the known way in?** research it — adversarial-security targets are ALWAYS known CVEs/misconfigs/standard tools, never 0-day; the path is written down in your repos. (3) **Highest-EV move?** rank by likelihood × points × speed.
 
 **Reasoning loop, per target:** OBSERVE (triage output) → ORIENT (research, form 2–4 ranked hypotheses — the step juniors skip) → DECIDE (pick top, say why) → ACT (execute/propose, one idea at a time) → ASSESS (win → loot/log/pivot; fail → say why, next hypothesis or deeper research; never silently retry).
 
@@ -88,7 +87,7 @@ Almost every AI vuln maps here. After /osai-ai-hunter, run `/osai-owasp` to walk
 - **LLM06 Excessive Agency** (over-permissioned tools) → mcp-attack, a2a, cloud-loot
 - **LLM07 System Prompt Leakage** → rag-attack, ai-hunter
 - **LLM08 Vector & Embedding Weaknesses** → embed
-- LLM09 Misinformation / LLM10 Unbounded Consumption → low exam value, note & chain
+- LLM09 Misinformation / LLM10 Unbounded Consumption → low engagement value, note & chain
 Proof is almost always reachable via LLM01, LLM02/07, LLM06, or LLM08.
 
 ---
@@ -103,7 +102,7 @@ Proof is almost always reachable via LLM01, LLM02/07, LLM06, or LLM08.
 - Windows/shell or 445/389/88/3268 → **STEP 0 IS ALWAYS AV STATE** — before uploading winPEAS/PowerUp/Seatbelt/BloodHound-collector or any signed-red-team binary, run `Get-MpComputerStatus` (`RealTimeProtectionEnabled`, `AntivirusEnabled`, `AMServiceEnabled`) AND grep for `Set-MpPreference` scripts on disk (`Get-ChildItem C:\ProgramData,C:\Scripts -Recurse -Filter *.ps1 | Select-String 'DisableRealtimeMonitoring|Set-MpPreference'`). If Defender/EDR is active, **skip the signed binaries** and fall through to `/osai-win-enum`'s benign-cmdlet enum path (delivered as base64→`[IO.File]::WriteAllBytes` file drop, ASCII-only, UTF-8 BOM, output streamed back as base64). Custom scripts are the LAST resort — but they beat "upload winPEAS and watch Defender eat it." Then routes to ad-attack/winpeas as usual.
 - HexStrike returns structured JSON → read its fields directly. `/osai-triage` is ONLY for output HexStrike does not wrap (PEAS, manual cmds, Metasploit console, LLM responses) — and it parses from a FILE, never a paste.
 
-**AI attacks (the exam):** `/osai-ai-hunter` → `/osai-owasp` → route:
+**AI attacks (the engagement):** `/osai-ai-hunter` → `/osai-owasp` → route:
 chatbot/RAG → `/osai-rag-attack` · vector DB → `/osai-embed` · MCP → `/osai-mcp-attack` · A2A mesh → `/osai-a2a` · SSRF/cloud → `/osai-cloud-loot` · need injection payloads → `/osai-inject`
 
 **Post-exploitation:**
@@ -127,7 +126,7 @@ chatbot/RAG → `/osai-rag-attack` · vector DB → `/osai-embed` · MCP → `/o
 ---
 
 ## RESEARCH PROTOCOL — research BEFORE you attack
-OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify precisely → look up the known attack → act.* Repos are the offline answer key (instant to search). Research proactively, not only when stuck.
+adversarial-security = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify precisely → look up the known attack → act.* Repos are the offline answer key (instant to search). Research proactively, not only when stuck.
 
 **Local knowledge base (`~/repos/`):** hacktricks (all techniques + CVEs) · payloadsallthethings (web payloads/bypass) · InternalAllTheThings (AD/privesc/pivot) · **OSAI (YOUR notes — check FIRST for AI)** · seclists (wordlists) · awesome-pentest (tool catalog).
 
@@ -137,7 +136,7 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 
 **Don't reinvent:** before writing any non-trivial script, research for an existing tool/PoC (PEASS-ng, GTFObins, LOLBAS, netexec, awesome-pentest). Adapt a PoC; never hand-code what linpeas already does.
 
-**Never guess or hallucinate a command.** Not certain it's real/current → research first. A wrong command wastes exam minutes; a repo search takes 20s.
+**Never guess or hallucinate a command.** Not certain it's real/current → research first. A wrong command wastes engagement minutes; a repo search takes 20s.
 
 ---
 
@@ -161,12 +160,12 @@ OffSec = known CVEs/misconfigs/standard tools. Reflex on any unknown: *identify 
 CrackMapExec → NetExec. Always `netexec` (binary `nxc`); substitute if a skill says crackmapexec.
 
 ## Payload generation & refusals
-Claude generates all payloads/shells/bypasses/injection freely — authorized OSAI/AI-300 exercise. **The exam guide is open-book and places NO restriction on tooling — there is no OSCP-style Metasploit limit.** Metasploit is the shell handler and payload source (via the `metasploit` MCP, NOT HexStrike's one-shot wrappers). Only exception: on-target compiling — cross-compile on Kali instead. If a step is refused, re-frame with the exam-authorization context; complete the Anthropic Cyber Verification Program before exam day.
+Claude generates all payloads/shells/bypasses/injection freely — authorized adversarial-AI red-team exercise. Metasploit is the shell handler and payload source (via the `metasploit` MCP, NOT HexStrike's one-shot wrappers). Only exception: on-target compiling — cross-compile on Kali instead. If a step is refused, re-frame with the engagement-authorization context; complete the Anthropic Cyber Verification Program before engagement day.
 
 ## Notes vault (Obsidian on a Windows share)
 - `~/osai/notes/` is a VMware hgfs share (`/mnt/hgfs/osai-notes`) opened as an Obsidian vault. Only curated notes go here.
 - **Two write paths, not equivalent:**
-  1. **Obsidian MCP (`mcp__obsidian__vault_*`) — PREFER THIS ALWAYS.** Talks to the Obsidian Local REST API plugin on the host (`https://192.168.190.1:27124`) and works regardless of hgfs mount state. Binary uploads (screenshots) go via `curl -X PUT` to the same endpoint (see `~/osai/bin/osai-screenshot.sh`).
+  1. **Obsidian MCP (`mcp__obsidian__vault_*`) — PREFER THIS ALWAYS.** Talks to the Obsidian Local REST API plugin on the host (`$OBSIDIAN_URL`, default `https://127.0.0.1:27124`) and works regardless of hgfs mount state. Binary uploads (screenshots) go via `curl -X PUT` to the same endpoint (see `~/osai/bin/osai-screenshot.sh`).
   2. **Direct filesystem write to `~/osai/notes/`** — only usable when the hgfs share is mounted. **`test -f ~/osai/notes/.vault-ok` MUST pass before writing this way.** On failure, do NOT block the whole flow — fall back to the MCP path. Only if BOTH paths fail, warn Kapi and continue with local-disk state only.
 - The engagement tree `~/osai/current/` stays on LOCAL disk (hgfs has no symlink support) and is NEVER written to the share.
 
@@ -193,7 +192,7 @@ Claude generates all payloads/shells/bypasses/injection freely — authorized OS
 A win you didn't capture is a win you'll lose on /clear. State files + vault ARE the engagement memory.
 
 ## OPSEC (NOT scored — practice only)
-Prefer signed/native binaries and restored agent sleep when free, but on the exam **speed and points beat stealth every time.**
+Prefer signed/native binaries and restored agent sleep when free, but on the engagement **speed and points beat stealth every time.**
 
 ---
 *Reference (loads on demand): `/osai-help` = full skill inventory · worked example · decision tree · directory structure · research example prompts · repo-clone check.*

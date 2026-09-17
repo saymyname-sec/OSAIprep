@@ -1,6 +1,6 @@
 # OSAI Field Reference
 
-> OffSec OSAI · Lab Reference  
+> OSAI · Lab Reference  
 > Tools: `loader.py` · `linux_loader.py` · `xor_encrypt_bin.py` · `cs_revshell/gen.sh` · `gen_linux_shell.sh`
 
 ---
@@ -12,7 +12,7 @@
 - [xor\_encrypt\_bin.py](#xor_encrypt_binpy)
 - [cs\_revshell / gen.sh (Windows target)](#cs_revshell--gensh-windows-target)
 - [gen\_linux\_shell.sh (Linux target)](#gen_linux_shellsh-linux-target)
-- [Exam Arsenal](#exam-arsenal)
+- [engagement arsenal](#engagement-arsenal)
 - [Claude CLI OSAI Skills](#claude-cli-osai-skills)
 
 ---
@@ -288,7 +288,7 @@ export TERM=xterm
 
 ---
 
-## Exam Arsenal
+## engagement arsenal
 
 ### Custom Tools Status
 
@@ -308,7 +308,7 @@ export TERM=xterm
 
 ### Claude CLI OSAI Skills
 
-Pre-built skills available via slash commands during the exam:
+Pre-built skills available via slash commands during the engagement:
 
 | Skill | Command | What it does |
 |---|---|---|

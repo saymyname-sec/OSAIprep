@@ -127,7 +127,7 @@ sudo apt update && sudo apt install -y hexstrike-ai
 
 `hexstrike_server` binds **`0.0.0.0:8888`**, has **no authentication of any kind**, and exposes
 an `execute_command` endpoint. That is unauthenticated remote code execution on your attack box,
-reachable from every subnet you tunnel into during the exam. The MCP client only ever talks to
+reachable from every subnet you tunnel into during the engagement. The MCP client only ever talks to
 `127.0.0.1`, so there is no reason to leave it open:
 
 ```bash
@@ -166,7 +166,7 @@ per turn — provided you have **not** set `ENABLE_TOOL_SEARCH=false` and have *
 ```bash
 sudo apt install -y metasploit-framework
 msfdb init                                  # starts postgres, creates the database
-msfconsole -q -x "workspace -a exam; exit"  # one workspace per engagement
+msfconsole -q -x "workspace -a engagement; exit"  # one workspace per engagement
 ```
 
 Register `msfmcpd`. `--enable-dangerous-actions` is what lets Claude run modules and write to
@@ -254,7 +254,7 @@ to firewall. It buys nothing and adds a failure mode.
 **The one case where it earns a place:** you decide the *Windows* Claude should act on Kali
 directly, not just advise. Then `TriV3/MCP-Kali-Server` is the one to look at — it handles SSH
 and reverse-shell management, which is the actual remote-operator use case. Even then, think
-twice before exam day: putting a network hop between the operator and the tunnel is a bad trade
+twice before engagement day: putting a network hop between the operator and the tunnel is a bad trade
 while you are pivoting through Ligolo.
 
 ---
@@ -368,7 +368,7 @@ CLAUDE.md rule:
 `/osai-engage` should run the same check as its first step and refuse to initialise a lab
 without it.
 
-## 5. Reboot test — do it once now, not on exam morning
+## 5. Reboot test — do it once now, not on engagement morning
 
 ```bash
 sudo reboot

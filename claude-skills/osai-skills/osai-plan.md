@@ -12,7 +12,7 @@ cat ~/osai/current/recon/recon_summary.md 2>/dev/null
 ```
 Pull only what's relevant to $ARGUMENTS — don't dump every file into context.
 
-## Step 2: Score against the exam math
+## Step 2: Score against the engagement math
 - AI machines = 15 each and the pass mark. Traditional = 10. DC flag = 5.
 - Weigh every candidate move by (likelihood × points × speed).
 - Untouched AI host with no prereqs beats grinding a half-done AD chain. Say so.

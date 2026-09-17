@@ -17,7 +17,7 @@ cat ~/osai/current/state/network_map.md
 ```markdown
 ## Executive Summary
 
-**Engagement:** OSAI-300 Certification Exam
+**Engagement:** Adversarial-AI Red-Team Engagement
 **Date:** <DATE>
 **Domain:** <DOMAIN from scope.md>
 **Assessor:** Kapi

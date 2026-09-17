@@ -6,7 +6,7 @@ Categories: amsi, etw, clm, defender, applocker, av, firewall, uac, wdac, execpo
 $ARGUMENTS = optional category filter. If empty, list all categories with one-line description and ask which one.
 
 # Purpose
-Windows security control bypass cheat sheet for OSAI exam. Every payload is copy-paste ready.
+Windows security control bypass cheat sheet for engagement. Every payload is copy-paste ready.
 
 # Steps
 

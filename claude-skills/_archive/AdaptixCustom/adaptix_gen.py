@@ -16,7 +16,7 @@ Usage:
   python3 adaptix_gen.py --ts https://10.10.14.5:4321/endpoint \
       --generate-only --listener-name my_https_443
 
-OffSec OSAI lab / authorized pentesting use only.
+OSAI lab / authorized pentesting use only.
 """
 
 import argparse

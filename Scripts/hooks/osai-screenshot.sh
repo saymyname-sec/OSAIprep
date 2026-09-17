@@ -85,7 +85,7 @@ python3 "$(dirname "$0")/stamp-timestamp.py" --host "$STAMP_HOST" "$OUT" >/dev/n
 }
 
 # Upload to Obsidian
-OBS_URL="${OBSIDIAN_URL:-https://192.168.190.1:27124}"
+OBS_URL="${OBSIDIAN_URL:-https://127.0.0.1:27124}"
 OBS_TOKEN="${OBSIDIAN_TOKEN:-$(sed -n 's/.*"Authorization": "Bearer \([^"]*\)".*/\1/p' ~/.claude/settings.json 2>/dev/null | head -1)}"
 OBS_FOLDER="${OBSIDIAN_SCREENSHOT_FOLDER:-Shadow Supply/screenshots}"
 OBS_PATH="${OBS_FOLDER}/${TS}_${SAFE_NAME}.png"

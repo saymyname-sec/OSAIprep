@@ -28,7 +28,7 @@ hydra -l  -P 10k-most-common.txt \
     
 ```
 cat > /tmp/users.txt << EOF
-ts_svc
+svc-ts
 administrator
 cloudbase-init
 r.chen

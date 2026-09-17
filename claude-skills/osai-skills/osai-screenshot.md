@@ -26,7 +26,7 @@ Capture a screenshot (either an X11 window OR render text output as a terminal-s
 
 # c) Freeze the exact command + output we just ran (best for headless flows)
 ~/osai/bin/osai-screenshot.sh dc01-nxc-pwn3d --cmd -- \
-  nxc smb 172.16.199.40 -u Administrator -p 'Molten-Carousel-Driftwood72' -d megacorpone.com --shares
+  nxc smb 172.16.199.40 -u Administrator -p 'Molten-Carousel-Driftwood72' -d example-corp.com --shares
 
 # d) Render an evidence file we already saved
 ~/osai/bin/osai-screenshot.sh dpapi-decrypt --text ~/osai/current/screenshots/03_dpapi_decrypt.txt
@@ -40,7 +40,7 @@ cat ~/osai/current/screenshots/02_dc01_winrm_proof.txt | \
 
 1. The image is written to `~/osai/current/screenshots/<UTC-timestamp>_<name>.png`.
 2. **`stamp-timestamp.py` composites a red UTC + local TIME/DATE + hostname footer onto every capture — no exceptions, text-rendered or X11-captured**. This is the proof-of-time gate: an image without the stamp is not a valid piece of evidence.
-3. The stamped PNG is `PUT` to `https://192.168.190.1:27124/vault/Shadow%20Supply/screenshots/<UTC-timestamp>_<name>.png` with the Obsidian API bearer token from `~/.claude/settings.json` (env vars `OBSIDIAN_URL` / `OBSIDIAN_TOKEN` / `OBSIDIAN_SCREENSHOT_FOLDER` override).
+3. The stamped PNG is `PUT` to `$OBSIDIAN_URL/vault/Shadow%20Supply/screenshots/<UTC-timestamp>_<name>.png` (default `https://127.0.0.1:27124`) with the Obsidian API bearer token from `~/.claude/settings.json` (env vars `OBSIDIAN_URL` / `OBSIDIAN_TOKEN` / `OBSIDIAN_SCREENSHOT_FOLDER` override).
 4. On HTTP 200/204 the vault-relative path is printed to stdout — that's what you paste into a note as `![](THAT_PATH)`.
 5. If the upload fails, the local path is printed instead and a `[!]` diagnostic goes to stderr — the local file is still there (already stamped) for a manual retry.
 

@@ -1,7 +1,7 @@
-Initialize the OSAI engagement for a lab or exam. $ARGUMENTS = --lab <name> --domain <domain> --dc <DC_IP> --scope <CIDR1,CIDR2,...>
+Initialize the OSAI engagement for a lab or engagement. $ARGUMENTS = --lab <name> --domain <domain> --dc <DC_IP> --scope <CIDR1,CIDR2,...>
 
 Example: --lab lab001 --domain corp.local --dc 10.10.10.1 --scope 10.10.10.0/24,10.10.20.0/24
-Exam:    --lab exam --domain osai.exam --dc 10.10.10.1 --scope 10.10.10.0/24
+Engagement:    --lab engagement --domain osai.engagement --dc 10.10.10.1 --scope 10.10.10.0/24
 
 ## Step 0: Vault gate — DO NOT initialise a lab without this
 ```bash

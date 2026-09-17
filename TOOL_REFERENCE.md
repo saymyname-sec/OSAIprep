@@ -19,7 +19,7 @@
 | **rlwrap nc** | 11 | Netcat listener with readline history | `apt install rlwrap netcat` | `rlwrap nc -lvnp 4444` |
 | **strings** | 11 | Extract printable strings from binaries | Built-in (Linux) | `strings -e l binary.exe` (Unicode) |
 | **mcs (Mono C# compiler)** | 11 | Compile C# on Linux | `apt install mono-mcs` | `mcs -out:svc.exe shell.cs` |
-| **ssh** | 11 | SSH client | Built-in | `ssh -i id_rsa -p 2222 Administrator@DC01` |
+| **ssh** | 11 | SSH client | Built-in | `ssh -i id_rsa -p 2222 Administrator@dc-host` |
 | **ILSpy / dotPeek** | 11 | .NET binary decompiler | Download separately | GUI — open .exe to decompile |
 | **aws cli** | 9 | AWS API interaction | `apt install awscli` | `aws sts get-caller-identity` |
 | **kubectl** | 9 | Kubernetes API client | `apt install kubectl` | `kubectl auth can-i --list` |

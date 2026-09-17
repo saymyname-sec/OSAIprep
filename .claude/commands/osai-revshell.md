@@ -6,7 +6,7 @@ Categories: bash, powershell, python, php, windows, upgrade, cmdinject, obfuscat
 $ARGUMENTS = optional category filter. If empty, list all categories with one-line description and ask which one.
 
 # Purpose
-Reverse shells, shell upgrades, command injection filter bypasses, and obfuscation for OSAI exam. Copy-paste ready.
+Reverse shells, shell upgrades, command injection filter bypasses, and obfuscation for engagement. Copy-paste ready.
 
 # Steps
 

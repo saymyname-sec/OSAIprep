@@ -200,7 +200,7 @@ Also just re-catch: keep the `multi/handler` job running so a persistence beacon
 
 ## DB / workspace (durable state)
 ```
-workspace -a exam        # one per lab (osai-engage does this)
+workspace -a engagement        # one per lab (osai-engage does this)
 db_status                # confirm postgres
 hosts · services · vulns · creds · loot · notes     # or the msf_*_info MCP tools
 creds add user:pass ...  # mirror from /osai-cred-vault (json stays authoritative)

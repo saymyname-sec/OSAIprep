@@ -1,7 +1,7 @@
 # OSAI Toolkit — Kali Machine Setup
 
 Complete prep guide to run the OSAI Claude Code engagement toolkit on Kali. Do this
-BEFORE exam/lab day. Work top-to-bottom; each section is idempotent (safe to re-run).
+BEFORE engagement/lab day. Work top-to-bottom; each section is idempotent (safe to re-run).
 
 Assumes user `kapi`. Replace paths if your username differs.
 

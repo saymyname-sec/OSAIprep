@@ -6,7 +6,7 @@ Categories: extensions, contenttype, magic, webshell, polyglot, htaccess, filena
 $ARGUMENTS = optional category filter. If empty, list all categories with one-line description and ask which one.
 
 # Purpose
-File upload bypass cheat sheet for OSAI exam. Every payload is copy-paste ready.
+File upload bypass cheat sheet for engagement. Every payload is copy-paste ready.
 
 # Steps
 

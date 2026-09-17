@@ -46,7 +46,7 @@ $EDITOR ~/.claude/settings.json
 - Its bearer token exported (or auto-read from `~/.claude/settings.json`'s
   `mcpServers.obsidian.headers.Authorization` line).
 - Optional overrides:
-  - `OBSIDIAN_URL` (default `https://192.168.190.1:27124`)
+  - `OBSIDIAN_URL` (default `https://127.0.0.1:27124`)
   - `OBSIDIAN_TOKEN`
   - `OBSIDIAN_SCREENSHOT_FOLDER` (default `Shadow Supply/screenshots`)
 

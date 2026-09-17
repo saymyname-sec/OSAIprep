@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Linux shellcode loader — OffSec OSAI lab use only.
+Linux shellcode loader — OSAI lab use only.
 
 Equivalent of loader.py for Linux targets. Uses mmap/mprotect instead of
 VirtualAlloc/VirtualProtect to enforce W^X:
@@ -431,7 +431,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="linux_loader.py",
         description=(
-            "Linux shellcode loader — OffSec OSAI lab use only.\n"
+            "Linux shellcode loader — OSAI lab use only.\n"
             "Uses mmap/mprotect for W^X, XOR decryption, SHA256 validation."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -482,7 +482,7 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
-    log.info("=== Linux Shellcode Loader — OffSec OSAI Lab ===")
+    log.info("=== Linux Shellcode Loader — OSAI Lab ===")
 
     # ── Detect architecture
     arch = _detect_architecture()

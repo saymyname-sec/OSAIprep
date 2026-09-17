@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Advanced Windows shellcode loader — OffSec OSAI lab use only.
+Advanced Windows shellcode loader — OSAI lab use only.
 
 Features:
   - W^X memory protection (RW alloc → copy → RX protect, never RWX)
@@ -461,7 +461,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="loader.py",
         description=(
-            "Advanced Windows shellcode loader — OffSec OSAI lab use only.\n"
+            "Advanced Windows shellcode loader — OSAI lab use only.\n"
             "Implements W^X memory protection, XOR decryption, SHA256 "
             "validation, and full WinAPI error handling."
         ),
@@ -532,7 +532,7 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
-    log.info("=== Advanced Shellcode Loader — OffSec OSAI Lab ===")
+    log.info("=== Advanced Shellcode Loader — OSAI Lab ===")
 
     # ── Detect architecture ───────────────────────────────────────────────
     arch = _detect_architecture()

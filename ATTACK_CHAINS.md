@@ -34,7 +34,7 @@ The complete end-to-end chain from the capstone module.
 [SSH private key exfiltrated]
         │
         ▼ SSH -p 2222
-[Domain Admin on DC01]
+[Domain Admin on dc-host]
 ```
 
 **Modules used:** 03 (agent attack), 05 (RAG poisoning), 07 (MCP/tool surface), 08 (binary hijack — pandas), 09 (SSRF patterns), 10 (threat modeling / OPSEC)
